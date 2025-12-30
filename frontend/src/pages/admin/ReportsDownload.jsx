@@ -1,0 +1,710 @@
+import React, { useState } from 'react';
+import {
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  Grid,
+  TextField,
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Avatar,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  Chip,
+  Alert,
+  Divider,
+  Paper,
+} from '@mui/material';
+import {
+  FileDownload,
+  Assessment,
+  People,
+  ReportProblem,
+  BugReport,
+  CalendarMonth,
+  PictureAsPdf,
+  TableChart,
+  Business,
+} from '@mui/icons-material';
+import { useBranch } from '../../contexts/BranchContext';
+import { AdminLayout } from './AdminDashboard';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
+
+const ReportsDownload = () => {
+  const { getEffectiveBranch, isSuperAdmin } = useBranch();
+  const [selectedReport, setSelectedReport] = useState('');
+  const [dateFrom, setDateFrom] = useState('2024-11-01');
+  const [dateTo, setDateTo] = useState(new Date().toISOString().split('T')[0]);
+  const [department, setDepartment] = useState('All');
+  const [format, setFormat] = useState('xlsx');
+
+  const reports = [
+    {
+      id: 'attendance',
+      title: 'Employee Attendance Report',
+      description: 'Comprehensive attendance data including work hours, self-ratings, and productivity metrics',
+      icon: <People />,
+      color: 'primary',
+      fields: ['Employee ID', 'Name', 'Department', 'Attendance Status', 'Work Hours', 'Self Rating', 'Productivity Score']
+    },
+    {
+      id: 'skill_tests',
+      title: 'Skill Test Performance Report',
+      description: 'Employee skill assessment results, scores, and improvement tracking',
+      icon: <Assessment />,
+      color: 'success',
+      fields: ['Employee ID', 'Name', 'Skill Area', 'Test Score', 'Pass/Fail Status', 'Previous Score', 'Improvement']
+    },
+    {
+      id: 'complaints',
+      title: 'Complaints Summary Report',
+      description: 'All employee complaints with status, resolution details, and timelines',
+      icon: <ReportProblem />,
+      color: 'warning',
+      fields: ['Complaint ID', 'Employee', 'Category', 'Priority', 'Status', 'Resolution', 'Timeline']
+    },
+    {
+      id: 'tech_issues',
+      title: 'Technical Issues Report',
+      description: 'Tech issues reported, employee resolutions, and admin approval status',
+      icon: <BugReport />,
+      color: 'error',
+      fields: ['Issue ID', 'Employee', 'Category', 'Impact Level', 'Status', 'Resolution', 'Approval Status']
+    },
+    {
+      id: 'comprehensive',
+      title: 'Comprehensive Employee Report',
+      description: 'Complete employee data including attendance, skills, complaints, and technical contributions',
+      icon: <CalendarMonth />,
+      color: 'info',
+      fields: ['All employee metrics combined in one comprehensive report']
+    }
+  ];
+
+  const departments = ['All', 'Customer Service', 'IT Support', 'Accounts', 'HR', 'Management'];
+
+  // Mock data generators
+  const generateAttendanceData = () => {
+    const allData = [
+      {
+        'Employee ID': 'EMP001',
+        'Employee Name': 'John Doe',
+        'Department': 'Customer Service',
+        'Branch': 'Main Branch',
+        'Date': '2024-11-22',
+        'Attendance Status': 'Present',
+        'Check-in Time': '09:15 AM',
+        'Work Hours': 8,
+        'Self Rating': 8,
+        'Work Summary': 'Processed loan applications, handled customer calls',
+        'Productivity Score': 85
+      },
+      {
+        'Employee ID': 'EMP002',
+        'Employee Name': 'Jane Smith',
+        'Department': 'IT Support',
+        'Branch': 'Tech Center',
+        'Date': '2024-11-22',
+        'Attendance Status': 'Present',
+        'Check-in Time': '09:05 AM',
+        'Work Hours': 8.5,
+        'Self Rating': 9,
+        'Work Summary': 'Fixed critical system issues, deployed updates',
+        'Productivity Score': 92
+      },
+      {
+        'Employee ID': 'EMP003',
+        'Employee Name': 'Mike Johnson',
+        'Department': 'Accounts',
+        'Branch': 'Downtown Branch',
+        'Date': '2024-11-22',
+        'Attendance Status': 'Present',
+        'Check-in Time': '09:00 AM',
+        'Work Hours': 8,
+        'Self Rating': 7,
+        'Work Summary': 'Processed account settlements, reviewed statements',
+        'Productivity Score': 78
+      },
+      {
+        'Employee ID': 'EMP004',
+        'Employee Name': 'Sarah Wilson',
+        'Department': 'HR',
+        'Branch': 'Main Branch',
+        'Date': '2024-11-22',
+        'Attendance Status': 'Present',
+        'Check-in Time': '09:10 AM',
+        'Work Hours': 8,
+        'Self Rating': 9,
+        'Work Summary': 'Conducted interviews, updated employee records',
+        'Productivity Score': 88
+      },
+      {
+        'Employee ID': 'EMP005',
+        'Employee Name': 'David Brown',
+        'Department': 'Customer Service',
+        'Branch': 'East Branch',
+        'Date': '2024-11-22',
+        'Attendance Status': 'Present',
+        'Check-in Time': '09:20 AM',
+        'Work Hours': 7.5,
+        'Self Rating': 8,
+        'Work Summary': 'Handled customer inquiries, processed transactions',
+        'Productivity Score': 82
+      }
+    ];
+    
+    const effectiveBranch = getEffectiveBranch();
+    if (isSuperAdmin || effectiveBranch === 'All Branches') {
+      return allData;
+    }
+    return allData.filter(record => record.Branch === effectiveBranch);
+  };
+
+  const generateSkillTestData = () => {
+    const allData = [
+      {
+        'Employee ID': 'EMP001',
+        'Employee Name': 'John Doe',
+        'Department': 'Customer Service',
+        'Branch': 'Main Branch',
+        'Skill Area': 'Banking Operations',
+        'Test Date': '2024-11-15',
+        'Test Score': 85,
+        'Status': 'Pass',
+        'Previous Score': 78,
+        'Improvement': 7,
+        'Next Test Due': '2025-01-15'
+      },
+      {
+        'Employee ID': 'EMP002',
+        'Employee Name': 'Jane Smith',
+        'Department': 'IT Support',
+        'Branch': 'Tech Center',
+        'Skill Area': 'Technical Support',
+        'Test Date': '2024-11-20',
+        'Test Score': 92,
+        'Status': 'Pass',
+        'Previous Score': 89,
+        'Improvement': 3,
+        'Next Test Due': '2025-01-20'
+      },
+      {
+        'Employee ID': 'EMP003',
+        'Employee Name': 'Mike Johnson',
+        'Department': 'Accounts',
+        'Branch': 'Downtown Branch',
+        'Skill Area': 'Financial Analysis',
+        'Test Date': '2024-11-18',
+        'Test Score': 78,
+        'Status': 'Pass',
+        'Previous Score': 72,
+        'Improvement': 6,
+        'Next Test Due': '2025-01-18'
+      },
+      {
+        'Employee ID': 'EMP004',
+        'Employee Name': 'Sarah Wilson',
+        'Department': 'HR',
+        'Branch': 'Main Branch',
+        'Skill Area': 'HR Management',
+        'Test Date': '2024-11-22',
+        'Test Score': 88,
+        'Status': 'Pass',
+        'Previous Score': 85,
+        'Improvement': 3,
+        'Next Test Due': '2025-01-22'
+      },
+      {
+        'Employee ID': 'EMP005',
+        'Employee Name': 'David Brown',
+        'Department': 'Customer Service',
+        'Branch': 'East Branch',
+        'Skill Area': 'Customer Relations',
+        'Test Date': '2024-11-19',
+        'Test Score': 82,
+        'Status': 'Pass',
+        'Previous Score': 79,
+        'Improvement': 3,
+        'Next Test Due': '2025-01-19'
+      }
+    ];
+    
+    const effectiveBranch = getEffectiveBranch();
+    if (isSuperAdmin || effectiveBranch === 'All Branches') {
+      return allData;
+    }
+    return allData.filter(record => record.Branch === effectiveBranch);
+  };
+
+  const generateComplaintsData = () => {
+    const allData = [
+      {
+        'Complaint ID': 'CMP001',
+        'Employee ID': 'EMP001',
+        'Employee Name': 'John Doe',
+        'Department': 'Customer Service',
+        'Branch': 'Main Branch',
+        'Title': 'Inadequate workplace lighting',
+        'Category': 'Workplace Environment',
+        'Priority': 'Medium',
+        'Status': 'Open',
+        'Submitted Date': '2024-11-20',
+        'Assigned To': 'Facilities Team',
+        'Description': 'The lighting in the third floor workspace is insufficient'
+      },
+      {
+        'Complaint ID': 'CMP002',
+        'Employee ID': 'EMP002',
+        'Employee Name': 'Jane Smith',
+        'Department': 'IT Support',
+        'Branch': 'Tech Center',
+        'Title': 'Harassment by supervisor',
+        'Category': 'HR Issue',
+        'Priority': 'High',
+        'Status': 'In Progress',
+        'Submitted Date': '2024-11-18',
+        'Assigned To': 'HR Department',
+        'Description': 'Experiencing inappropriate behavior from supervisor'
+      },
+      {
+        'Complaint ID': 'CMP003',
+        'Employee ID': 'EMP003',
+        'Employee Name': 'Mike Johnson',
+        'Department': 'Accounts',
+        'Branch': 'Downtown Branch',
+        'Title': 'Outdated computer equipment',
+        'Category': 'IT Equipment',
+        'Priority': 'Low',
+        'Status': 'Resolved',
+        'Submitted Date': '2024-11-15',
+        'Assigned To': 'IT Department',
+        'Description': 'Computer hardware needs upgrade'
+      }
+    ];
+    
+    const effectiveBranch = getEffectiveBranch();
+    if (isSuperAdmin || effectiveBranch === 'All Branches') {
+      return allData;
+    }
+    return allData.filter(record => record.Branch === effectiveBranch);
+  };
+
+  const generateTechIssuesData = () => {
+    const allData = [
+      {
+        'Issue ID': 'TECH001',
+        'Employee ID': 'EMP001',
+        'Employee Name': 'John Doe',
+        'Department': 'Customer Service',
+        'Branch': 'Main Branch',
+        'Title': 'Login system timeout error',
+        'Category': 'Authentication',
+        'Impact Level': 'Medium',
+        'Status': 'Pending Approval',
+        'Submitted Date': '2024-11-20',
+        'Employee Resolution': 'Updated session timeout configuration',
+        'Admin Status': 'Under Review'
+      },
+      {
+        'Issue ID': 'TECH002',
+        'Employee ID': 'EMP002',
+        'Employee Name': 'Jane Smith',
+        'Department': 'IT Support',
+        'Branch': 'Tech Center',
+        'Title': 'Database search malfunction',
+        'Category': 'Database',
+        'Impact Level': 'High',
+        'Status': 'Open',
+        'Submitted Date': '2024-11-18',
+        'Employee Resolution': 'Optimized search queries',
+        'Admin Status': 'In Review'
+      },
+      {
+        'Issue ID': 'TECH003',
+        'Employee ID': 'EMP003',
+        'Employee Name': 'Mike Johnson',
+        'Department': 'Accounts',
+        'Branch': 'Downtown Branch',
+        'Title': 'Report generation performance issue',
+        'Category': 'Performance',
+        'Impact Level': 'Medium',
+        'Status': 'Approved',
+        'Submitted Date': '2024-11-15',
+        'Employee Resolution': 'Optimized database queries and added indexing',
+        'Admin Status': 'Approved'
+      }
+    ];
+    
+    const effectiveBranch = getEffectiveBranch();
+    if (isSuperAdmin || effectiveBranch === 'All Branches') {
+      return allData;
+    }
+    return allData.filter(record => record.Branch === effectiveBranch);
+  };
+
+  const handleDownloadReport = () => {
+    if (!selectedReport) {
+      alert('Please select a report type');
+      return;
+    }
+
+    let data = [];
+    let filename = '';
+
+    switch (selectedReport) {
+      case 'attendance':
+        data = generateAttendanceData();
+        filename = `attendance_report_${dateFrom}_to_${dateTo}`;
+        break;
+      case 'skill_tests':
+        data = generateSkillTestData();
+        filename = `skill_test_report_${dateFrom}_to_${dateTo}`;
+        break;
+      case 'complaints':
+        data = generateComplaintsData();
+        filename = `complaints_report_${dateFrom}_to_${dateTo}`;
+        break;
+      case 'tech_issues':
+        data = generateTechIssuesData();
+        filename = `tech_issues_report_${dateFrom}_to_${dateTo}`;
+        break;
+      case 'comprehensive':
+        // Combine all data
+        data = [
+          ...generateAttendanceData().map(item => ({ ...item, 'Report Type': 'Attendance' })),
+          ...generateSkillTestData().map(item => ({ ...item, 'Report Type': 'Skill Tests' })),
+          ...generateComplaintsData().map(item => ({ ...item, 'Report Type': 'Complaints' })),
+          ...generateTechIssuesData().map(item => ({ ...item, 'Report Type': 'Tech Issues' }))
+        ];
+        filename = `comprehensive_report_${dateFrom}_to_${dateTo}`;
+        break;
+      default:
+        return;
+    }
+
+    // Filter by department if not "All"
+    if (department !== 'All') {
+      data = data.filter(item => item.Department === department);
+    }
+
+    if (format === 'xlsx') {
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Report');
+      
+      const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, `${filename}.xlsx`);
+    } else {
+      // CSV format
+      const ws = XLSX.utils.json_to_sheet(data);
+      const csvOutput = XLSX.utils.sheet_to_csv(ws);
+      const blob = new Blob([csvOutput], { type: 'text/csv;charset=utf-8;' });
+      saveAs(blob, `${filename}.csv`);
+    }
+  };
+
+  const getReportIcon = (reportId) => {
+    const report = reports.find(r => r.id === reportId);
+    return report ? report.icon : <Assessment />;
+  };
+
+  const getReportColor = (reportId) => {
+    const report = reports.find(r => r.id === reportId);
+    return report ? report.color : 'primary';
+  };
+
+  return (
+    <AdminLayout>
+      <Box>
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h4" gutterBottom>
+            Reports Download Center
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Business fontSize="small" color="primary" />
+            <Typography variant="body2" color="text.secondary">
+              Viewing: {getEffectiveBranch()}
+            </Typography>
+            {!isSuperAdmin && (
+              <Chip 
+                label="Branch Admin" 
+                size="small" 
+                color="primary" 
+                variant="outlined"
+              />
+            )}
+          </Box>
+        </Box>
+
+        <Grid container spacing={3}>
+          {/* Report Selection */}
+          <Grid item xs={12} md={8}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Select Report Type
+                </Typography>
+                
+                <List>
+                  {reports.map((report) => (
+                    <React.Fragment key={report.id}>
+                      <ListItem
+                        button
+                        selected={selectedReport === report.id}
+                        onClick={() => setSelectedReport(report.id)}
+                        sx={{
+                          borderRadius: 2,
+                          mb: 1,
+                          border: selectedReport === report.id ? 2 : 1,
+                          borderColor: selectedReport === report.id ? `${report.color}.main` : 'divider',
+                        }}
+                      >
+                        <ListItemIcon>
+                          <Avatar sx={{ backgroundColor: `${report.color}.main` }}>
+                            {report.icon}
+                          </Avatar>
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={report.title}
+                          secondary={
+                            <Box>
+                              <Typography variant="body2" sx={{ mb: 1 }}>
+                                {report.description}
+                              </Typography>
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                {report.fields.slice(0, 3).map((field, index) => (
+                                  <Chip
+                                    key={index}
+                                    label={field}
+                                    size="small"
+                                    variant="outlined"
+                                  />
+                                ))}
+                                {report.fields.length > 3 && (
+                                  <Chip
+                                    label={`+${report.fields.length - 3} more`}
+                                    size="small"
+                                    variant="outlined"
+                                    color="primary"
+                                  />
+                                )}
+                              </Box>
+                            </Box>
+                          }
+                        />
+                      </ListItem>
+                      <Divider />
+                    </React.Fragment>
+                  ))}
+                </List>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Report Configuration */}
+          <Grid item xs={12} md={4}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Report Configuration
+                </Typography>
+
+                {selectedReport && (
+                  <Box>
+                    <Alert severity="info" sx={{ mb: 3 }}>
+                      <Typography variant="subtitle2">
+                        Selected: {reports.find(r => r.id === selectedReport)?.title}
+                      </Typography>
+                    </Alert>
+
+                    <TextField
+                      fullWidth
+                      label="From Date"
+                      type="date"
+                      value={dateFrom}
+                      onChange={(e) => setDateFrom(e.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                      sx={{ mb: 2 }}
+                    />
+
+                    <TextField
+                      fullWidth
+                      label="To Date"
+                      type="date"
+                      value={dateTo}
+                      onChange={(e) => setDateTo(e.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                      sx={{ mb: 2 }}
+                    />
+
+                    <FormControl fullWidth sx={{ mb: 2 }}>
+                      <InputLabel>Department</InputLabel>
+                      <Select
+                        value={department}
+                        onChange={(e) => setDepartment(e.target.value)}
+                        label="Department"
+                      >
+                        {departments.map((dept) => (
+                          <MenuItem key={dept} value={dept}>
+                            {dept}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+
+                    <FormControl fullWidth sx={{ mb: 3 }}>
+                      <InputLabel>File Format</InputLabel>
+                      <Select
+                        value={format}
+                        onChange={(e) => setFormat(e.target.value)}
+                        label="File Format"
+                      >
+                        <MenuItem value="xlsx">
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <TableChart />
+                            Excel (.xlsx)
+                          </Box>
+                        </MenuItem>
+                        <MenuItem value="csv">
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <PictureAsPdf />
+                            CSV (.csv)
+                          </Box>
+                        </MenuItem>
+                      </Select>
+                    </FormControl>
+
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      size="large"
+                      startIcon={<FileDownload />}
+                      onClick={handleDownloadReport}
+                      sx={{
+                        background: 'linear-gradient(135deg, #64B5F6, #42A5F5)',
+                        py: 1.5,
+                      }}
+                    >
+                      Generate & Download Report
+                    </Button>
+                  </Box>
+                )}
+
+                {!selectedReport && (
+                  <Alert severity="warning">
+                    Please select a report type to configure download options.
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Quick Stats */}
+            <Card sx={{ mt: 3 }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Quick Statistics
+                </Typography>
+                
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                  <Typography variant="body2">Total Employees:</Typography>
+                  <Typography variant="body2" fontWeight="medium">147</Typography>
+                </Box>
+                
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                  <Typography variant="body2">Active Issues:</Typography>
+                  <Typography variant="body2" fontWeight="medium">23</Typography>
+                </Box>
+                
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                  <Typography variant="body2">Completed Tests:</Typography>
+                  <Typography variant="body2" fontWeight="medium">89</Typography>
+                </Box>
+                
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2">Avg Attendance:</Typography>
+                  <Typography variant="body2" fontWeight="medium">91%</Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+
+        {/* Additional Information */}
+        <Card sx={{ mt: 4 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Report Information
+            </Typography>
+            
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Available Data Fields:
+                </Typography>
+                {selectedReport && (
+                  <List dense>
+                    {reports.find(r => r.id === selectedReport)?.fields.map((field, index) => (
+                      <ListItem key={index}>
+                        <ListItemText
+                          primary={field}
+                          sx={{ py: 0.5 }}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                )}
+                {!selectedReport && (
+                  <Typography variant="body2" color="text.secondary">
+                    Select a report type to view available fields
+                  </Typography>
+                )}
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Export Guidelines:
+                </Typography>
+                <List dense>
+                  <ListItem>
+                    <ListItemText
+                      primary="Excel Format"
+                      secondary="Best for data analysis and pivot tables"
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText
+                      primary="CSV Format"
+                      secondary="Best for importing into other systems"
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText
+                      primary="Date Range"
+                      secondary="Select appropriate date range for accurate data"
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText
+                      primary="Department Filter"
+                      secondary="Filter by specific department or select 'All'"
+                    />
+                  </ListItem>
+                </List>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+      </Box>
+    </AdminLayout>
+  );
+};
+
+export default ReportsDownload;
