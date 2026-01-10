@@ -70,7 +70,7 @@ const LeaveRequest = () => {
   const [leaveBalance, setLeaveBalance] = useState({
     casualLeave: 0,
     sickLeave: 0,
-    earnedLeave: 0,
+    annualLeave: 0,
     totalAvailable: 0,
     totalTaken: 0,
     pending: 0,
@@ -425,8 +425,8 @@ const LeaveRequest = () => {
             </Grid>
             <Grid item xs={12} sm={4}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="body1">Earned Leave:</Typography>
-                <Chip label={`${leaveBalance.earnedLeave} days`} color="success" />
+                <Typography variant="body1">Annual Leave:</Typography>
+                <Chip label={`${leaveBalance.annualLeave} days`} color="success" />
               </Box>
             </Grid>
           </Grid>

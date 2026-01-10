@@ -228,14 +228,14 @@ public class LeaveService : ILeaveService
 
             var casualLeave = leaveBalances.FirstOrDefault(lb => lb.LeaveType.Name == "Casual Leave");
             var sickLeave = leaveBalances.FirstOrDefault(lb => lb.LeaveType.Name == "Sick Leave");
-            var earnedLeave = leaveBalances.FirstOrDefault(lb => lb.LeaveType.Name == "Earned Leave" || lb.LeaveType.Name == "Annual Leave");
+            var annualLeave = leaveBalances.FirstOrDefault(lb => lb.LeaveType.Name == "Annual Leave");
 
             var summary = new LeaveBalanceSummaryDto
             {
                 CasualLeave = casualLeave != null ? (casualLeave.TotalAllocated - casualLeave.Used - casualLeave.Pending) : 0,
                 SickLeave = sickLeave != null ? (sickLeave.TotalAllocated - sickLeave.Used - sickLeave.Pending) : 0,
-                EarnedLeave = earnedLeave != null ? (earnedLeave.TotalAllocated - earnedLeave.Used - earnedLeave.Pending) : 0,
-                TotalAvailable = leaveBalances.Sum(lb => lb.TotalAllocated - lb.Used - lb.Pending),
+                AnnualLeave = annualLeave != null ? (annualLeave.TotalAllocated - annualLeave.Used - annualLeave.Pending) : 0,
+                TotalAvailable = leaveBalances.Sum(lb => lb.TotalAllocated), // Total allocated (doesn't change)
                 TotalTaken = leaveBalances.Sum(lb => lb.Used),
                 Pending = leaveBalances.Sum(lb => lb.Pending),
                 DetailedBalances = detailedBalances

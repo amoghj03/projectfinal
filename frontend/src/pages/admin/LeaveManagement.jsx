@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -30,6 +30,8 @@ import {
   Tabs,
   Tab,
   Badge,
+  CircularProgress,
+  Snackbar,
 } from '@mui/material';
 import {
   Visibility,
@@ -45,6 +47,7 @@ import {
 } from '@mui/icons-material';
 import { AdminLayout } from './AdminDashboard';
 import { useBranch } from '../../contexts/BranchContext';
+import adminLeaveService from '../../services/adminLeaveService';
 
 const TabPanel = ({ children, value, index }) => (
   <div role="tabpanel" hidden={value !== index}>
@@ -63,97 +66,48 @@ const LeaveManagement = () => {
   const [selectedLeave, setSelectedLeave] = useState(null);
   const [actionType, setActionType] = useState(''); // 'approve' or 'reject'
   const [actionRemark, setActionRemark] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [leaveRequests, setLeaveRequests] = useState([]);
+  const [error, setError] = useState(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
-  // Mock leave requests data
-  const [leaveRequests, setLeaveRequests] = useState([
-    {
-      id: 1,
-      employeeId: 'EMP001',
-      employeeName: 'John Doe',
-      department: 'Customer Service',
-      branch: 'Main Branch',
-      leaveType: 'Sick Leave',
-      startDate: '2024-12-20',
-      endDate: '2024-12-20',
-      days: 1,
-      isHalfDay: false,
-      reason: 'Fever and cold',
-      status: 'Pending',
-      appliedDate: '2024-12-18',
-    },
-    {
-      id: 2,
-      employeeId: 'EMP002',
-      employeeName: 'Jane Smith',
-      department: 'IT Support',
-      branch: 'Tech Center',
-      leaveType: 'Casual Leave',
-      startDate: '2024-12-25',
-      endDate: '2024-12-27',
-      days: 3,
-      isHalfDay: false,
-      reason: 'Family vacation',
-      status: 'Pending',
-      appliedDate: '2024-12-22',
-    },
-    {
-      id: 3,
-      employeeId: 'EMP003',
-      employeeName: 'Mike Johnson',
-      department: 'Accounts',
-      branch: 'Downtown Branch',
-      leaveType: 'Casual Leave',
-      startDate: '2024-12-15',
-      endDate: '2024-12-15',
-      days: 0.5,
-      isHalfDay: true,
-      halfDayPeriod: 'afternoon',
-      reason: 'Personal work',
-      status: 'Approved',
-      appliedDate: '2024-12-14',
-      approvedBy: 'Manager',
-      approvedDate: '2024-12-14',
-    },
-    {
-      id: 4,
-      employeeId: 'EMP004',
-      employeeName: 'Sarah Wilson',
-      department: 'HR',
-      branch: 'Main Branch',
-      leaveType: 'Earned Leave',
-      startDate: '2024-11-25',
-      endDate: '2024-11-27',
-      days: 3,
-      isHalfDay: false,
-      reason: 'Family function',
-      status: 'Rejected',
-      appliedDate: '2024-11-20',
-      rejectedBy: 'HR Manager',
-      rejectedDate: '2024-11-21',
-      rejectionReason: 'Insufficient leave balance',
-    },
-    {
-      id: 5,
-      employeeId: 'EMP005',
-      employeeName: 'David Brown',
-      department: 'Security',
-      branch: 'Main Branch',
-      leaveType: 'Sick Leave',
-      startDate: '2024-12-28',
-      endDate: '2024-12-29',
-      days: 2,
-      isHalfDay: false,
-      reason: 'Medical checkup',
-      status: 'Pending',
-      appliedDate: '2024-12-27',
-    },
-  ]);
+  // Fetch leave requests on component mount and when branch/filters change
+  useEffect(() => {
+    fetchLeaveRequests();
+  }, [getEffectiveBranch()]);
+
+  const fetchLeaveRequests = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const filters = {
+        branch: isSuperAdmin ? getEffectiveBranch() : undefined,
+      };
+      
+      const data = await adminLeaveService.getLeaveRequests(filters);
+      setLeaveRequests(data);
+    } catch (err) {
+      console.error('Error fetching leave requests:', err);
+      setError(err.response?.data?.message || 'Failed to load leave requests');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const showSnackbar = (message, severity = 'success') => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
 
   const leaveTypes = [
     'All Types',
     'Casual Leave',
     'Sick Leave',
-    'Earned Leave',
+    'Annual Leave',
     'Maternity Leave',
     'Paternity Leave',
     'Compensatory Off',
@@ -216,38 +170,28 @@ const LeaveManagement = () => {
     setActionDialog(true);
   };
 
-  const handleAction = () => {
-    if (actionType === 'approve') {
-      setLeaveRequests(
-        leaveRequests.map((leave) =>
-          leave.id === selectedLeave.id
-            ? {
-                ...leave,
-                status: 'Approved',
-                approvedBy: 'Admin',
-                approvedDate: new Date().toISOString().split('T')[0],
-                approvalRemark: actionRemark,
-              }
-            : leave
-        )
-      );
-    } else if (actionType === 'reject') {
-      setLeaveRequests(
-        leaveRequests.map((leave) =>
-          leave.id === selectedLeave.id
-            ? {
-                ...leave,
-                status: 'Rejected',
-                rejectedBy: 'Admin',
-                rejectedDate: new Date().toISOString().split('T')[0],
-                rejectionReason: actionRemark || 'No reason provided',
-              }
-            : leave
-        )
+  const handleAction = async () => {
+    try {
+      if (actionType === 'approve') {
+        await adminLeaveService.approveLeaveRequest(selectedLeave.id, actionRemark);
+        showSnackbar('Leave request approved successfully', 'success');
+      } else if (actionType === 'reject') {
+        await adminLeaveService.rejectLeaveRequest(selectedLeave.id, actionRemark);
+        showSnackbar('Leave request rejected successfully', 'success');
+      }
+      
+      // Refresh the leave requests
+      await fetchLeaveRequests();
+      
+      setActionDialog(false);
+      setActionRemark('');
+    } catch (err) {
+      console.error('Error processing leave action:', err);
+      showSnackbar(
+        err.response?.data?.message || 'Failed to process leave request',
+        'error'
       );
     }
-    setActionDialog(false);
-    setActionRemark('');
   };
 
   const stats = {
@@ -276,72 +220,92 @@ const LeaveManagement = () => {
           </Typography>
         </Box>
 
-        {/* Statistics Cards */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Box>
-                    <Typography color="text.secondary" variant="body2">
-                      Total Requests
-                    </Typography>
-                    <Typography variant="h4">{stats.totalRequests}</Typography>
-                  </Box>
-                  <CalendarToday sx={{ fontSize: 40, color: 'primary.main', opacity: 0.3 }} />
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
+        {/* Loading State */}
+        {loading && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+            <CircularProgress />
+          </Box>
+        )}
 
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Box>
-                    <Typography color="text.secondary" variant="body2">
-                      Pending Approval
-                    </Typography>
-                    <Typography variant="h4">{stats.pending}</Typography>
-                  </Box>
-                  <HourglassEmpty sx={{ fontSize: 40, color: 'warning.main', opacity: 0.3 }} />
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
+        {/* Error State */}
+        {error && !loading && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+            <Button size="small" onClick={fetchLeaveRequests} sx={{ ml: 2 }}>
+              Retry
+            </Button>
+          </Alert>
+        )}
 
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Box>
-                    <Typography color="text.secondary" variant="body2">
-                      Approved
-                    </Typography>
-                    <Typography variant="h4">{stats.approved}</Typography>
-                  </Box>
-                  <EventAvailable sx={{ fontSize: 40, color: 'success.main', opacity: 0.3 }} />
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
+        {/* Main Content */}
+        {!loading && !error && (
+          <>
+            {/* Statistics Cards */}
+            <Grid container spacing={3} sx={{ mb: 4 }}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Box>
+                        <Typography color="text.secondary" variant="body2">
+                          Total Requests
+                        </Typography>
+                        <Typography variant="h4">{stats.totalRequests}</Typography>
+                      </Box>
+                      <CalendarToday sx={{ fontSize: 40, color: 'primary.main', opacity: 0.3 }} />
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Box>
-                    <Typography color="text.secondary" variant="body2">
-                      Rejected
-                    </Typography>
-                    <Typography variant="h4">{stats.rejected}</Typography>
-                  </Box>
-                  <EventBusy sx={{ fontSize: 40, color: 'error.main', opacity: 0.3 }} />
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Box>
+                        <Typography color="text.secondary" variant="body2">
+                          Pending Approval
+                        </Typography>
+                        <Typography variant="h4">{stats.pending}</Typography>
+                      </Box>
+                      <HourglassEmpty sx={{ fontSize: 40, color: 'warning.main', opacity: 0.3 }} />
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} sm={6} md={3}>
+                <Card>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Box>
+                        <Typography color="text.secondary" variant="body2">
+                          Approved
+                        </Typography>
+                        <Typography variant="h4">{stats.approved}</Typography>
+                      </Box>
+                      <EventAvailable sx={{ fontSize: 40, color: 'success.main', opacity: 0.3 }} />
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} sm={6} md={3}>
+                <Card>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Box>
+                        <Typography color="text.secondary" variant="body2">
+                          Rejected
+                        </Typography>
+                        <Typography variant="h4">{stats.rejected}</Typography>
+                      </Box>
+                      <EventBusy sx={{ fontSize: 40, color: 'error.main', opacity: 0.3 }} />
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
 
         {/* Filters */}
         <Card sx={{ mb: 3 }}>
@@ -465,6 +429,20 @@ const LeaveManagement = () => {
             </TabPanel>
           </CardContent>
         </Card>
+        </>
+        )}
+
+        {/* Snackbar for notifications */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
 
         {/* View Leave Details Dialog */}
         <Dialog open={viewDialog} onClose={() => setViewDialog(false)} maxWidth="sm" fullWidth>

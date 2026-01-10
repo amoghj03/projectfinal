@@ -44,7 +44,7 @@ public class LeaveBalanceSummaryDto
 {
     public decimal CasualLeave { get; set; }
     public decimal SickLeave { get; set; }
-    public decimal EarnedLeave { get; set; }
+    public decimal AnnualLeave { get; set; }
     public decimal TotalAvailable { get; set; }
     public decimal TotalTaken { get; set; }
     public decimal Pending { get; set; }
