@@ -45,7 +45,32 @@ const complaintService = {
         data: null
       };
     }
+  },
+
+  // Mark complaint as resolved (Approval Pending status)
+  markComplaintResolved: async (complaintId, closingComments) => {
+    try {
+      const response = await axios.put(
+        `${API_BASE_URL}/Complaint/${complaintId}/mark-resolved`,
+        { closingComments },
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error marking complaint as resolved:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to mark complaint as resolved',
+        data: null
+      };
+    }
   }
 };
 
 export default complaintService;
+

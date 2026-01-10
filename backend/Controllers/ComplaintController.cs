@@ -107,5 +107,58 @@ namespace BankAPI.Controllers
                 });
             }
         }
+
+        [HttpPut("{id}/mark-resolved")]
+        public async Task<IActionResult> MarkComplaintResolved(long id, [FromBody] MarkResolvedRequest request)
+        {
+            try
+            {
+                var employeeId = GetEmployeeIdFromAuth();
+                if (employeeId == 0)
+                {
+                    return Unauthorized(new { success = false, message = "Unauthorized access." });
+                }
+
+                var complaint = await _context.Complaints.FindAsync(id);
+                if (complaint == null)
+                {
+                    return NotFound(new { success = false, message = "Complaint not found" });
+                }
+
+                // Verify the complaint belongs to this employee
+                if (complaint.EmployeeId != employeeId)
+                {
+                    return Forbid();
+                }
+
+                // Mark as Approval Pending (waiting for admin approval)
+                complaint.Status = "Approval Pending";
+                complaint.ResolutionNotes = request.ClosingComments;
+                complaint.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Complaint marked as resolved and pending admin approval",
+                    data = new
+                    {
+                        complaint.Id,
+                        complaint.ComplaintNumber,
+                        complaint.Status
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Failed to update complaint status",
+                    error = ex.Message
+                });
+            }
+        }
     }
 }

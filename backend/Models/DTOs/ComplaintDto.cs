@@ -23,4 +23,9 @@ namespace BankAPI.Models.DTOs
         public string Category { get; set; } = string.Empty;
         public string Priority { get; set; } = string.Empty;
     }
+
+    public class MarkResolvedRequest
+    {
+        public string ClosingComments { get; set; } = string.Empty;
+    }
 }

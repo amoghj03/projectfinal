@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -27,6 +27,9 @@ import {
   TablePagination,
   IconButton,
   Tooltip,
+  CircularProgress,
+  Alert,
+  Snackbar,
 } from '@mui/material';
 import {
   FileDownload,
@@ -37,12 +40,15 @@ import {
   CheckCircle,
   HourglassEmpty,
   Business,
+  ThumbUp,
+  ThumbDown,
 } from '@mui/icons-material';
 import { useBranch } from '../../contexts/BranchContext';
 import { AdminLayout } from './AdminDashboard';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import adminComplaintService from '../../services/adminComplaintService';
 
 const ComplaintsOverview = () => {
   const { getEffectiveBranch, isSuperAdmin } = useBranch();
@@ -54,94 +60,107 @@ const ComplaintsOverview = () => {
   const [selectedComplaint, setSelectedComplaint] = useState(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-
-  // Mock complaints data
-  const [complaintsData] = useState([
-    {
-      complaintId: 'CMP001',
-      employeeId: 'EMP001',
-      employeeName: 'John Doe',
-      department: 'Customer Service',
-      branch: 'Main Branch',
-      title: 'Inadequate workplace lighting',
-      description: 'The lighting in the third floor workspace is insufficient, causing eye strain during work hours. This has been ongoing for several weeks and affects productivity.',
-      category: 'workplace',
-      priority: 'medium',
-      status: 'open',
-      submittedDate: '2024-11-20',
-      lastUpdate: '2024-11-20',
-      assignedTo: 'Facilities Team'
-    },
-    {
-      complaintId: 'CMP002',
-      employeeId: 'EMP002',
-      employeeName: 'Jane Smith',
-      department: 'IT Support',
-      branch: 'Tech Center',
-      title: 'Harassment by supervisor',
-      description: 'Experiencing inappropriate behavior and unprofessional conduct from immediate supervisor. Multiple incidents of verbal abuse and discrimination.',
-      category: 'hr',
-      priority: 'high',
-      status: 'in_progress',
-      submittedDate: '2024-11-18',
-      lastUpdate: '2024-11-21',
-      assignedTo: 'HR Department'
-    },
-    {
-      complaintId: 'CMP003',
-      employeeId: 'EMP003',
-      employeeName: 'Mike Johnson',
-      department: 'Accounts',
-      branch: 'Downtown Branch',
-      title: 'Outdated computer equipment',
-      description: 'Current workstation is running slowly and affecting productivity. Request for hardware upgrade to meet job requirements.',
-      category: 'it',
-      priority: 'low',
-      status: 'resolved',
-      submittedDate: '2024-11-15',
-      lastUpdate: '2024-11-19',
-      assignedTo: 'IT Department',
-      resolution: 'Hardware upgrade completed on 2024-11-19'
-    },
-    {
-      complaintId: 'CMP004',
-      employeeId: 'EMP004',
-      employeeName: 'Sarah Wilson',
-      department: 'HR',
-      branch: 'Main Branch',
-      title: 'Unfair workload distribution',
-      description: 'Consistently assigned more tasks than other team members, leading to overtime and stress. Request for workload review.',
-      category: 'management',
-      priority: 'medium',
-      status: 'in_progress',
-      submittedDate: '2024-11-12',
-      lastUpdate: '2024-11-20',
-      assignedTo: 'Management'
-    },
-    {
-      complaintId: 'CMP005',
-      employeeId: 'EMP005',
-      employeeName: 'David Brown',
-      department: 'Customer Service',
-      branch: 'East Branch',
-      title: 'Lack of training resources',
-      description: 'Insufficient training materials and resources for new banking products. Affecting ability to serve customers effectively.',
-      category: 'training',
-      priority: 'medium',
-      status: 'open',
-      submittedDate: '2024-11-10',
-      lastUpdate: '2024-11-10',
-      assignedTo: 'Training Department'
-    },
-  ]);
+  
+  // State for API data
+  const [complaintsData, setComplaintsData] = useState([]);
+  const [stats, setStats] = useState({
+    total: 0,
+    open: 0,
+    approvalPending: 0,
+    resolved: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [actionDialog, setActionDialog] = useState({ open: false, type: '', complaintId: null });
+  const [actionComment, setActionComment] = useState('');
+  const [actionResolution, setActionResolution] = useState('');
+  
+  // Ref to prevent double API calls in StrictMode
+  const hasFetched = useRef(false);
 
   const categories = ['All', 'workplace', 'hr', 'it', 'management', 'training', 'policy', 'other'];
-  const statuses = ['All', 'open', 'in_progress', 'resolved'];
+  const statuses = ['All', 'open', 'approval_pending', 'resolved'];
+
+  const fetchComplaintsData = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const branch = getEffectiveBranch();
+      
+      // Fetch complaints and stats in parallel
+      const [complaintsResponse, statsResponse] = await Promise.all([
+        adminComplaintService.getAllComplaints(branch),
+        adminComplaintService.getComplaintStats(branch)
+      ]);
+
+      setComplaintsData(complaintsResponse);
+      setStats(statsResponse);
+    } catch (err) {
+      console.error('Error fetching complaints:', err);
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Failed to load complaints';
+      setError(errorMessage);
+      setSnackbar({ open: true, message: errorMessage, severity: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch complaints data from API
+  useEffect(() => {
+    if (!hasFetched.current) {
+      hasFetched.current = true;
+      fetchComplaintsData();
+    }
+  }, []);
+
+  const handleTakeAction = async () => {
+    try {
+      await adminComplaintService.takeActionOnComplaint(actionDialog.complaintId, actionComment);
+      setSnackbar({ open: true, message: 'Action taken successfully. Complaint marked as In Progress.', severity: 'success' });
+      setActionDialog({ open: false, type: '', complaintId: null });
+      setActionComment('');
+      fetchComplaintsData(); // Refresh data
+    } catch (err) {
+      console.error('Error taking action:', err);
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Failed to take action';
+      setSnackbar({ open: true, message: errorMessage, severity: 'error' });
+    }
+  };
+
+  const handleResolve = async () => {
+    try {
+      await adminComplaintService.resolveComplaint(actionDialog.complaintId, actionResolution, actionComment);
+      setSnackbar({ open: true, message: 'Complaint approved and resolved successfully.', severity: 'success' });
+      setActionDialog({ open: false, type: '', complaintId: null });
+      setActionComment('');
+      setActionResolution('');
+      fetchComplaintsData(); // Refresh data
+    } catch (err) {
+      console.error('Error resolving complaint:', err);
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Failed to resolve complaint';
+      setSnackbar({ open: true, message: errorMessage, severity: 'error' });
+    }
+  };
+
+  const handleReject = async () => {
+    try {
+      await adminComplaintService.rejectComplaint(actionDialog.complaintId, actionComment || 'Complaint rejected');
+      setSnackbar({ open: true, message: 'Complaint rejected and marked as Open.', severity: 'warning' });
+      setActionDialog({ open: false, type: '', complaintId: null });
+      setActionComment('');
+      fetchComplaintsData(); // Refresh data
+    } catch (err) {
+      console.error('Error rejecting complaint:', err);
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Failed to reject complaint';
+      setSnackbar({ open: true, message: errorMessage, severity: 'error' });
+    }
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
       case 'open': return 'error';
-      case 'in_progress': return 'warning';
+      case 'approval_pending': return 'info';
       case 'resolved': return 'success';
       default: return 'default';
     }
@@ -166,21 +185,32 @@ const ComplaintsOverview = () => {
       'policy': 'Policy/Procedure',
       'other': 'Other'
     };
-    return categoryLabels[category] || category;
+    return categoryLabels[category?.toLowerCase()] || category;
+  };
+
+  const formatStatus = (status) => {
+    if (!status) return '';
+    // Convert from database format (e.g., "In Progress") to display format
+    return status.toLowerCase().replace(/ /g, '_');
+  };
+
+  const formatStatusDisplay = (status) => {
+    if (!status) return '';
+    // Convert for display (e.g., "in_progress" to "In Progress")
+    return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   const filteredData = complaintsData.filter(complaint => {
-    const effectiveBranch = getEffectiveBranch();
-    const branchMatch = isSuperAdmin || effectiveBranch === 'All Branches' || complaint.branch === effectiveBranch;
+    const complaintStatus = formatStatus(complaint.status);
+    const filterStatusLower = filterStatus === 'All' ? '' : filterStatus.toLowerCase();
     
     return (
-      branchMatch &&
       (filterEmployee === '' || 
-       complaint.employeeName.toLowerCase().includes(filterEmployee.toLowerCase()) || 
-       complaint.employeeId.toLowerCase().includes(filterEmployee.toLowerCase())) &&
-      (filterStatus === '' || filterStatus === 'All' || complaint.status === filterStatus) &&
-      (filterCategory === '' || filterCategory === 'All' || complaint.category === filterCategory) &&
-      (filterDate === '' || complaint.submittedDate >= filterDate)
+       complaint.employeeName?.toLowerCase().includes(filterEmployee.toLowerCase()) || 
+       complaint.employeeId?.toString().toLowerCase().includes(filterEmployee.toLowerCase())) &&
+      (filterStatusLower === '' || complaintStatus === filterStatusLower) &&
+      (filterCategory === '' || filterCategory === 'All' || complaint.category?.toLowerCase() === filterCategory.toLowerCase()) &&
+      (filterDate === '' || new Date(complaint.submittedDate) >= new Date(filterDate))
     );
   });
 
@@ -189,20 +219,27 @@ const ComplaintsOverview = () => {
     setDetailsDialog(true);
   };
 
+  const handleOpenActionDialog = (type, complaintId) => {
+    setActionDialog({ open: true, type, complaintId });
+    setActionComment('');
+    setActionResolution('');
+  };
+
   const handleExportExcel = () => {
     const exportData = filteredData.map(complaint => ({
-      'Complaint ID': complaint.complaintId,
+      'Complaint ID': complaint.id,
       'Employee ID': complaint.employeeId,
       'Employee Name': complaint.employeeName,
-      'Department': complaint.department,
+      'Department': complaint.department || 'N/A',
+      'Branch': complaint.branch || 'N/A',
       'Title': complaint.title,
       'Description': complaint.description,
-      'Category': getCategoryLabel(complaint.category),
+      'Category': complaint.category,
       'Priority': complaint.priority,
-      'Status': complaint.status,
-      'Submitted Date': complaint.submittedDate,
-      'Last Update': complaint.lastUpdate,
-      'Assigned To': complaint.assignedTo,
+      'Status': formatStatusDisplay(complaint.status),
+      'Submitted Date': new Date(complaint.submittedDate).toLocaleDateString(),
+      'Last Update': complaint.lastUpdate ? new Date(complaint.lastUpdate).toLocaleDateString() : 'N/A',
+      'Admin Comment': complaint.adminComment || 'N/A',
       'Resolution': complaint.resolution || 'N/A'
     }));
 
@@ -215,19 +252,13 @@ const ComplaintsOverview = () => {
     saveAs(data, `complaints_report_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
-  // Calculate statistics
-  const stats = {
-    total: filteredData.length,
-    open: filteredData.filter(c => c.status === 'open').length,
-    inProgress: filteredData.filter(c => c.status === 'in_progress').length,
-    resolved: filteredData.filter(c => c.status === 'resolved').length,
-    highPriority: filteredData.filter(c => c.priority === 'high').length
-  };
+  // Calculate statistics (removed since we now get from API)
+  // Stats are now fetched from the backend
 
   // Chart data
   const statusData = [
     { name: 'Open', value: stats.open, color: '#f44336' },
-    { name: 'In Progress', value: stats.inProgress, color: '#ff9800' },
+    { name: 'Approval Pending', value: stats.approvalPending, color: '#2196f3' },
     { name: 'Resolved', value: stats.resolved, color: '#4caf50' }
   ];
 
@@ -239,6 +270,17 @@ const ComplaintsOverview = () => {
   return (
     <AdminLayout>
       <Box>
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+            <CircularProgress />
+          </Box>
+        ) : error ? (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+            <Button onClick={fetchComplaintsData} sx={{ ml: 2 }}>Retry</Button>
+          </Alert>
+        ) : (
+          <>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
           <Box>
             <Typography variant="h4">
@@ -311,13 +353,13 @@ const ComplaintsOverview = () => {
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Avatar sx={{ backgroundColor: 'warning.main', mr: 2 }}>
+                  <Avatar sx={{ backgroundColor: 'info.main', mr: 2 }}>
                     <HourglassEmpty />
                   </Avatar>
                   <Box>
-                    <Typography variant="h6">{stats.inProgress}</Typography>
+                    <Typography variant="h6">{stats.approvalPending}</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      In Progress
+                      Approval Pending
                     </Typography>
                   </Box>
                 </Box>
@@ -461,20 +503,21 @@ const ComplaintsOverview = () => {
                     <TableCell>Priority</TableCell>
                     <TableCell>Status</TableCell>
                     <TableCell>Submitted Date</TableCell>
-                    <TableCell>Assigned To</TableCell>
                     <TableCell>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {filteredData
                     .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                    .map((complaint) => (
-                      <TableRow key={complaint.complaintId}>
-                        <TableCell>{complaint.complaintId}</TableCell>
+                    .map((complaint) => {
+                      const complaintStatus = formatStatus(complaint.status);
+                      return (
+                      <TableRow key={complaint.id}>
+                        <TableCell>{complaint.id}</TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center' }}>
                             <Avatar sx={{ width: 32, height: 32, mr: 2, fontSize: 14 }}>
-                              {complaint.employeeName.split(' ').map(n => n[0]).join('')}
+                              {complaint.employeeName?.split(' ').map(n => n[0]).join('') || 'N'}
                             </Avatar>
                             <Box>
                               <Typography variant="body2">{complaint.employeeName}</Typography>
@@ -489,12 +532,12 @@ const ComplaintsOverview = () => {
                             {complaint.title}
                           </Typography>
                           <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 200 }}>
-                            {complaint.description.substring(0, 50)}...
+                            {complaint.description?.substring(0, 50)}...
                           </Typography>
                         </TableCell>
                         <TableCell>
                           <Chip
-                            label={getCategoryLabel(complaint.category)}
+                            label={complaint.category}
                             size="small"
                             variant="outlined"
                           />
@@ -508,25 +551,49 @@ const ComplaintsOverview = () => {
                         </TableCell>
                         <TableCell>
                           <Chip
-                            label={complaint.status}
-                            color={getStatusColor(complaint.status)}
+                            label={formatStatusDisplay(complaint.status)}
+                            color={getStatusColor(complaintStatus)}
                             size="small"
                           />
                         </TableCell>
-                        <TableCell>{complaint.submittedDate}</TableCell>
-                        <TableCell>{complaint.assignedTo}</TableCell>
+                        <TableCell>{new Date(complaint.submittedDate).toLocaleDateString()}</TableCell>
                         <TableCell>
-                          <Tooltip title="View Full Complaint">
-                            <IconButton
-                              onClick={() => handleViewComplaint(complaint)}
-                              size="small"
-                            >
-                              <Visibility />
-                            </IconButton>
-                          </Tooltip>
+                          <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Tooltip title="View Details">
+                              <IconButton
+                                onClick={() => handleViewComplaint(complaint)}
+                                size="small"
+                              >
+                                <Visibility />
+                              </IconButton>
+                            </Tooltip>
+                            {complaintStatus === 'approval_pending' && (
+                              <>
+                                <Tooltip title="Approve">
+                                  <IconButton
+                                    onClick={() => handleOpenActionDialog('resolve', complaint.id)}
+                                    size="small"
+                                    color="success"
+                                  >
+                                    <ThumbUp />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Reject">
+                                  <IconButton
+                                    onClick={() => handleOpenActionDialog('reject', complaint.id)}
+                                    size="small"
+                                    color="error"
+                                  >
+                                    <ThumbDown />
+                                  </IconButton>
+                                </Tooltip>
+                              </>
+                            )}
+                          </Box>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    );
+                    })}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -549,23 +616,24 @@ const ComplaintsOverview = () => {
         {/* Complaint Details Dialog */}
         <Dialog open={detailsDialog} onClose={() => setDetailsDialog(false)} maxWidth="md" fullWidth>
           <DialogTitle>
-            Complaint Details - {selectedComplaint?.complaintId}
+            Complaint Details - #{selectedComplaint?.id}
           </DialogTitle>
           <DialogContent>
             {selectedComplaint && (
-              <Grid container spacing={3}>
+              <Grid container spacing={3} sx={{ mt: 1 }}>
                 <Grid item xs={12} md={6}>
                   <Typography variant="h6" gutterBottom>Employee Information</Typography>
                   <Typography><strong>Name:</strong> {selectedComplaint.employeeName}</Typography>
                   <Typography><strong>ID:</strong> {selectedComplaint.employeeId}</Typography>
-                  <Typography><strong>Department:</strong> {selectedComplaint.department}</Typography>
-                  <Typography><strong>Submitted:</strong> {selectedComplaint.submittedDate}</Typography>
+                  <Typography><strong>Department:</strong> {selectedComplaint.department || 'N/A'}</Typography>
+                  <Typography><strong>Branch:</strong> {selectedComplaint.branch || 'N/A'}</Typography>
+                  <Typography><strong>Submitted:</strong> {new Date(selectedComplaint.submittedDate).toLocaleDateString()}</Typography>
                 </Grid>
                 <Grid item xs={12} md={6}>
                   <Typography variant="h6" gutterBottom>Complaint Status</Typography>
                   <Typography><strong>Category:</strong> 
                     <Chip
-                      label={getCategoryLabel(selectedComplaint.category)}
+                      label={selectedComplaint.category}
                       size="small"
                       variant="outlined"
                       sx={{ ml: 1 }}
@@ -581,13 +649,12 @@ const ComplaintsOverview = () => {
                   </Typography>
                   <Typography sx={{ mt: 1 }}><strong>Status:</strong> 
                     <Chip
-                      label={selectedComplaint.status}
-                      color={getStatusColor(selectedComplaint.status)}
+                      label={formatStatusDisplay(selectedComplaint.status)}
+                      color={getStatusColor(formatStatus(selectedComplaint.status))}
                       size="small"
                       sx={{ ml: 1 }}
                     />
                   </Typography>
-                  <Typography sx={{ mt: 1 }}><strong>Assigned To:</strong> {selectedComplaint.assignedTo}</Typography>
                 </Grid>
                 <Grid item xs={12}>
                   <Typography variant="h6" gutterBottom>Complaint Title</Typography>
@@ -610,6 +677,68 @@ const ComplaintsOverview = () => {
             <Button onClick={() => setDetailsDialog(false)}>Close</Button>
           </DialogActions>
         </Dialog>
+
+        {/* Action Dialog (Approve or Reject) */}
+        <Dialog open={actionDialog.open} onClose={() => setActionDialog({ open: false, type: '', complaintId: null })} maxWidth="sm" fullWidth>
+          <DialogTitle>
+            {actionDialog.type === 'reject' ? 'Reject Complaint' : 'Approve Complaint'}
+          </DialogTitle>
+          <DialogContent>
+            <Box sx={{ mt: 2 }}>
+              {actionDialog.type === 'reject' ? (
+                <TextField
+                  label="Comment"
+                  value={actionComment}
+                  onChange={(e) => setActionComment(e.target.value)}
+                  multiline
+                  rows={4}
+                  fullWidth
+                  placeholder="Explain why you are rejecting this complaint..."
+                />
+              ) : (
+                <TextField
+                  label="Resolution"
+                  value={actionResolution}
+                  onChange={(e) => setActionResolution(e.target.value)}
+                  multiline
+                  rows={4}
+                  fullWidth
+                  placeholder="Describe how the complaint was resolved..."
+                />
+              )}
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setActionDialog({ open: false, type: '', complaintId: null })}>
+              Cancel
+            </Button>
+            <Button
+              onClick={actionDialog.type === 'reject' ? handleReject : handleResolve}
+              variant="contained"
+              color={actionDialog.type === 'reject' ? 'error' : 'success'}
+            >
+              {actionDialog.type === 'reject' ? 'Reject' : 'Approve'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Snackbar for notifications */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <Alert
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+            severity={snackbar.severity}
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+          </>
+        )}
       </Box>
     </AdminLayout>
   );

@@ -105,7 +105,8 @@ const ComplaintRegister = () => {
       if (response.success && response.data) {
         // Transform backend data to match frontend format
         const formattedComplaints = response.data.map(complaint => ({
-          id: complaint.complaintNumber,
+          id: complaint.id, // Keep numeric ID for API calls
+          complaintNumber: complaint.complaintNumber, // Display string
           title: complaint.title,
           description: complaint.description,
           category: complaint.category.toLowerCase(),
@@ -147,6 +148,8 @@ const ComplaintRegister = () => {
   const statuses = [
     { value: 'open', label: 'Open', color: 'error', icon: <Pending /> },
     { value: 'in_progress', label: 'In Progress', color: 'warning', icon: <HourglassEmpty /> },
+    { value: 'approval_pending', label: 'Approval Pending', color: 'info', icon: <HourglassEmpty /> },
+    { value: 'resolved', label: 'Resolved', color: 'success', icon: <CheckCircle /> },
     { value: 'closed', label: 'Closed', color: 'success', icon: <CheckCircle /> }
   ];
 
@@ -202,21 +205,30 @@ const ComplaintRegister = () => {
     setCloseDialog(true);
   };
 
-  const confirmCloseComplaint = () => {
+  const confirmCloseComplaint = async () => {
     if (selectedComplaint && closeComments.trim()) {
-      setComplaints(prev => prev.map(complaint => 
-        complaint.id === selectedComplaint.id 
-          ? { 
-              ...complaint, 
-              status: 'closed', 
-              closingComments: closeComments.trim(),
-              lastUpdate: new Date().toISOString().split('T')[0]
-            }
-          : complaint
-      ));
-      setCloseDialog(false);
-      setSelectedComplaint(null);
-      setCloseComments('');
+      setLoading(true);
+      try {
+        const response = await complaintService.markComplaintResolved(
+          selectedComplaint.id, 
+          closeComments.trim()
+        );
+        
+        if (response.success) {
+          showSnackbar('Complaint marked as resolved and pending admin approval', 'success');
+          setCloseDialog(false);
+          setSelectedComplaint(null);
+          setCloseComments('');
+          await fetchComplaints(); // Refresh the complaints list
+        } else {
+          showSnackbar(response.message || 'Failed to mark complaint as resolved', 'error');
+        }
+      } catch (error) {
+        console.error('Error closing complaint:', error);
+        showSnackbar('Failed to mark complaint as resolved', 'error');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -226,7 +238,8 @@ const ComplaintRegister = () => {
     total: complaints.length,
     open: complaints.filter(c => c.status === 'open').length,
     inProgress: complaints.filter(c => c.status === 'in_progress').length,
-    closed: complaints.filter(c => c.status === 'closed').length
+    approvalPending: complaints.filter(c => c.status === 'approval_pending').length,
+    closed: complaints.filter(c => c.status === 'closed' || c.status === 'resolved').length
   };
 
   return (
@@ -293,13 +306,13 @@ const ComplaintRegister = () => {
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Avatar sx={{ backgroundColor: 'warning.main', mr: 2 }}>
+                  <Avatar sx={{ backgroundColor: 'info.main', mr: 2 }}>
                     <HourglassEmpty />
                   </Avatar>
                   <Box>
-                    <Typography variant="h6">{complaintStats.inProgress}</Typography>
+                    <Typography variant="h6">{complaintStats.approvalPending}</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      In Progress
+                      Approval Pending
                     </Typography>
                   </Box>
                 </Box>
@@ -349,8 +362,8 @@ const ComplaintRegister = () => {
                   >
                     <MenuItem value="all">All</MenuItem>
                     <MenuItem value="open">Open</MenuItem>
-                    <MenuItem value="in_progress">In Progress</MenuItem>
-                    <MenuItem value="closed">Closed</MenuItem>
+                    <MenuItem value="approval_pending">Approval Pending</MenuItem>
+                    <MenuItem value="resolved">Resolved</MenuItem>
                   </Select>
                 </FormControl>
               </Box>
@@ -380,7 +393,7 @@ const ComplaintRegister = () => {
                         return (
                           <React.Fragment key={complaint.id}>
                             <TableRow>
-                              <TableCell>{complaint.id}</TableCell>
+                              <TableCell>{complaint.complaintNumber}</TableCell>
                               <TableCell>
                                 <Typography variant="subtitle2">
                                   {complaint.title}
@@ -637,7 +650,7 @@ const ComplaintRegister = () => {
           fullWidth
         >
           <DialogTitle>
-            Close Complaint: {selectedComplaint?.id}
+            Close Complaint: {selectedComplaint?.complaintNumber}
           </DialogTitle>
           <DialogContent>
             <Typography variant="body2" color="text.secondary" paragraph>
