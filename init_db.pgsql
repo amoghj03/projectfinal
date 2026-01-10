@@ -386,23 +386,45 @@ INSERT INTO branches (tenant_id, name, code, city, country) VALUES
 INSERT INTO employees (tenant_id, user_id, employee_id, full_name, email, department, branch_id, job_role, join_date, salary) VALUES
 (1,1,'EMP-ACME-001','Admin User','admin@acme.com','Management',1,'Admin','2023-01-01',120000),
 (1,2,'EMP-ACME-002','John Doe','john@acme.com','Engineering',1,'Software Engineer','2023-03-01',90000),
-(1,3,'EMP-ACME-003','HR Manager','hr@acme.com','HR',1,'HR Manager','2023-02-01',80000);
+(1,3,'EMP-ACME-003','HR Manager','hr@acme.com','HR',2,'HR Manager','2023-02-01',80000);
 
 INSERT INTO roles (tenant_id, name, description, is_system) VALUES
 (1,'Admin','System Administrator',true),
-(1,'HR','Human Resources',true),
+(1,'SUPER_ADMIN','Human Resources',true),
 (1,'Employee','Regular Employee',true);
 
-INSERT INTO permissions (name, display_name, category) VALUES
-('dashboard.view','View Dashboard','core'),
-('employee.manage','Manage Employees','management'),
-('leave.approve','Approve Leave','management'),
-('attendance.mark','Mark Attendance','core');
+INSERT INTO permissions (name, display_name, description, category) VALUES
+('dashboard.view', 'View Dashboard', 'Access main dashboard', 'core'),
+('employee.view', 'View Employee Profile', 'View own employee details', 'core'),
+('leave.request', 'Request Leave', 'Submit leave request', 'core'),
+('skill.manage', 'Manage Skills', 'Add or update skills', 'core'),
+('complaint.create', 'Raise Complaint', 'Register a complaint', 'support'),
+('techissue.create', 'Raise Tech Issue', 'Register technical issues', 'support'),
+('admin.dashboard.view', 'View Admin Dashboard', 'Access admin dashboard', 'admin'),
+('employee.manage', 'Manage Employees', 'Create, update, deactivate employees', 'management'),
+('role.manage', 'Manage Roles & Permissions', 'Assign permissions to roles', 'admin'),
+('leave.approve', 'Approve Leave', 'Approve or reject leave requests', 'management'),
+('attendance.manage', 'Manage Attendance', 'Edit and manage attendance records', 'management'),
+('payslip.generate', 'Generate Payslips', 'Generate and publish payslips', 'payroll'),
+('skill.report.view', 'View Skill Reports', 'View skill assessment reports', 'reports'),
+('complaint.manage', 'Manage Complaints', 'View and resolve complaints', 'support'),
+('techissue.manage', 'Manage Tech Issues', 'Approve and resolve tech issues', 'support'),
+('report.download', 'Download Reports', 'Download system reports', 'reports');
 
-INSERT INTO role_permissions (role_id, permission_id) VALUES
-(1,1),(1,2),(1,3),(1,4),
-(2,1),(2,3),
-(3,1),(3,4);
+
+INSERT INTO
+	ROLE_PERMISSIONS (ROLE_ID, PERMISSION_ID, CREATED_AT)
+VALUES
+	(1, 8, NOW()),
+	(1, 7, NOW()),
+	(1, 9, NOW()),
+	(1, 10, NOW()),
+	(1, 11, NOW()),
+	(1, 12, NOW()),
+	(1, 13, NOW()),
+	(1, 14, NOW()),
+	(1, 15, NOW()),
+	(1, 16, NOW());
 
 INSERT INTO employee_roles (employee_id, role_id, assigned_by) VALUES
 (1,1,1),
