@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -27,6 +27,8 @@ import {
   ListItemText,
   ListItemSecondaryAction,
   IconButton,
+  Snackbar,
+  CircularProgress,
 } from '@mui/material';
 import {
   CheckCircle,
@@ -38,6 +40,8 @@ import {
   Assignment,
 } from '@mui/icons-material';
 import { Layout } from './Dashboard';
+import attendanceService from '../services/attendanceService';
+import workLogService from '../services/workLogService';
 
 const EmployeeTracking = () => {
   // Attendance state
@@ -47,24 +51,7 @@ const EmployeeTracking = () => {
   const [checkOutTime, setCheckOutTime] = useState(null);
   
   // Work items state
-  const [workItems, setWorkItems] = useState([
-    {
-      id: 1,
-      title: 'Process loan applications',
-      description: 'Reviewed and processed 15 loan applications',
-      hours: 4,
-      date: new Date().toISOString().split('T')[0],
-      status: 'completed'
-    },
-    {
-      id: 2,
-      title: 'Customer service calls',
-      description: 'Handled customer inquiries and complaints',
-      hours: 3,
-      date: new Date().toISOString().split('T')[0],
-      status: 'completed'
-    }
-  ]);
+  const [workItems, setWorkItems] = useState([]);
   
   // Work dialog state
   const [workDialog, setWorkDialog] = useState(false);
@@ -79,71 +66,238 @@ const EmployeeTracking = () => {
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   
   // Attendance history
-  const [attendanceHistory] = useState([
-    { date: '2024-11-21', status: 'Present', time: '09:15 AM' },
-    { date: '2024-11-20', status: 'Present', time: '09:05 AM' },
-    { date: '2024-11-19', status: 'Present', time: '09:20 AM' },
-    { date: '2024-11-18', status: 'Present', time: '09:10 AM' },
-    { date: '2024-11-17', status: 'Late', time: '09:45 AM' },
-  ]);
+  const [attendanceHistory, setAttendanceHistory] = useState([]);
+  
+  // Loading and error states
+  const [loading, setLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const hasFetchedData = useRef(false);
 
   useEffect(() => {
-    // Check if attendance is already marked today
-    const today = new Date().toISOString().split('T')[0];
-    const checkInToday = localStorage.getItem(`checkin_${today}`);
-    const checkOutToday = localStorage.getItem(`checkout_${today}`);
-    
-    if (checkInToday) {
-      setCheckedIn(true);
-      setCheckInTime(checkInToday);
-    }
-    
-    if (checkOutToday) {
-      setCheckedOut(true);
-      setCheckOutTime(checkOutToday);
-    }
-
-    // Check if rating is already submitted today
-    const ratingToday = localStorage.getItem(`rating_${today}`);
-    if (ratingToday) {
-      setRatingSubmitted(true);
-      setDailyRating(parseInt(ratingToday));
+    if (!hasFetchedData.current) {
+      hasFetchedData.current = true;
+      fetchAllData();
     }
   }, []);
 
-  const handleCheckIn = () => {
-    const now = new Date();
-    const timeString = now.toLocaleTimeString();
-    const today = now.toISOString().split('T')[0];
-    
-    setCheckedIn(true);
-    setCheckInTime(timeString);
-    localStorage.setItem(`checkin_${today}`, timeString);
+  const showSnackbar = (message, severity = 'success') => {
+    setSnackbar({ open: true, message, severity });
   };
 
-  const handleCheckOut = () => {
-    const now = new Date();
-    const timeString = now.toLocaleTimeString();
-    const today = now.toISOString().split('T')[0];
-    
-    setCheckedOut(true);
-    setCheckOutTime(timeString);
-    localStorage.setItem(`checkout_${today}`, timeString);
+  const fetchAllData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        fetchTodayAttendance(),
+        fetchTodayWorkLogs(),
+        fetchAttendanceHistory(),
+      ]);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleAddWorkItem = () => {
+  const fetchTodayAttendance = async () => {
+    try {
+      const response = await attendanceService.getTodayAttendance();
+      if (response.success && response.data) {
+        const attendance = response.data;
+        if (attendance.checkInTime) {
+          setCheckedIn(true);
+          // API returns time already formatted (e.g., "02:04 PM")
+          setCheckInTime(attendance.checkInTime);
+        }
+        if (attendance.checkOutTime) {
+          setCheckedOut(true);
+          // API returns time already formatted (e.g., "03:24 PM")
+          setCheckOutTime(attendance.checkOutTime);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching today attendance:', error);
+    }
+  };
+
+  const fetchTodayWorkLogs = async () => {
+    try {
+      const response = await workLogService.getTodayWorkLogs();
+      if (response.success && response.data) {
+        // API returns workLogs array inside data object
+        const workLogsArray = response.data.workLogs || response.data;
+        
+        if (Array.isArray(workLogsArray) && workLogsArray.length > 0) {
+          const logs = workLogsArray.map(log => {
+            let formattedDate = new Date().toISOString().split('T')[0];
+            try {
+              if (log.date) {
+                const dateObj = new Date(log.date);
+                if (!isNaN(dateObj.getTime())) {
+                  formattedDate = dateObj.toISOString().split('T')[0];
+                }
+              }
+            } catch (e) {
+              console.error('Date parsing error:', e);
+            }
+            
+            return {
+              id: log.id,
+              title: log.taskName,
+              description: log.description,
+              hours: log.hours || 0,
+              date: formattedDate,
+              status: log.status || 'completed'
+            };
+          });
+          setWorkItems(logs);
+        } else {
+          setWorkItems([]);
+        }
+      } else {
+        setWorkItems([]);
+      }
+    } catch (error) {
+      console.error('Error fetching today work logs:', error);
+      setWorkItems([]);
+    }
+  };
+
+  const fetchAttendanceHistory = async () => {
+    try {
+      const response = await attendanceService.getAttendanceHistory(7);
+      if (response.success && response.data && Array.isArray(response.data) && response.data.length > 0) {
+        const history = response.data
+          .map(record => {
+            // Safe date parsing
+            let formattedDate = null;
+            let formattedCheckInTime = 'N/A';
+            let formattedCheckOutTime = 'N/A';
+            
+            try {
+              // API returns 'date' field (YYYY-MM-DD format)
+              if (record.date) {
+                const dateObj = new Date(record.date);
+                if (!isNaN(dateObj.getTime())) {
+                  // Format date in Indian locale
+                  formattedDate = dateObj.toLocaleDateString('en-IN');
+                }
+              }
+            } catch (e) {
+              console.error('Date parsing error:', e);
+            }
+            
+            try {
+              // Format check-in time in IST (Indian Standard Time)
+              if (record.checkInTime && typeof record.checkInTime === 'string') {
+                // If API returns formatted time, keep it; otherwise parse it
+                formattedCheckInTime = record.checkInTime.includes(':') ? record.checkInTime : 'N/A';
+              }
+            } catch (e) {
+              console.error('Check-in time parsing error:', e);
+            }
+            
+            try {
+              // Format check-out time in IST (Indian Standard Time)
+              if (record.checkOutTime && typeof record.checkOutTime === 'string') {
+                // If API returns formatted time, keep it; otherwise parse it
+                formattedCheckOutTime = record.checkOutTime.includes(':') ? record.checkOutTime : 'N/A';
+              }
+            } catch (e) {
+              console.error('Check-out time parsing error:', e);
+            }
+            
+            return {
+              date: formattedDate,
+              status: record.status,
+              checkInTime: formattedCheckInTime,
+              checkOutTime: formattedCheckOutTime,
+              valid: formattedDate !== null // Mark as valid only if date parsed successfully
+            };
+          })
+          .filter(record => record.valid); // Filter out records with invalid dates
+        
+        setAttendanceHistory(history);
+      } else {
+        setAttendanceHistory([]);
+      }
+    } catch (error) {
+      console.error('Error fetching attendance history:', error);
+      setAttendanceHistory([]);
+    }
+  };
+
+  const handleCheckIn = async () => {
+    setLoading(true);
+    try {
+      const response = await attendanceService.checkIn();
+      if (response.success) {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString();
+        setCheckedIn(true);
+        setCheckInTime(timeString);
+        showSnackbar('Checked in successfully!', 'success');
+        await fetchAttendanceHistory();
+      } else {
+        showSnackbar(response.message || 'Failed to check in', 'error');
+      }
+    } catch (error) {
+      console.error('Error checking in:', error);
+      showSnackbar('Failed to check in', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCheckOut = async () => {
+    setLoading(true);
+    try {
+      const response = await attendanceService.checkOut();
+      if (response.success) {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString();
+        setCheckedOut(true);
+        setCheckOutTime(timeString);
+        showSnackbar('Checked out successfully!', 'success');
+        await fetchAttendanceHistory();
+      } else {
+        showSnackbar(response.message || 'Failed to check out', 'error');
+      }
+    } catch (error) {
+      console.error('Error checking out:', error);
+      showSnackbar('Failed to check out', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddWorkItem = async () => {
     if (newWorkItem.title.trim() === '') return;
     
-    const workItem = {
-      id: Date.now(),
-      ...newWorkItem,
-      date: new Date().toISOString().split('T')[0],
-      status: 'completed'
-    };
-    
-    setWorkItems(prev => [...prev, workItem]);
-    setNewWorkItem({ title: '', description: '', hours: 1 });
-    setWorkDialog(false);
+    setLoading(true);
+    try {
+      const workLogData = {
+        taskName: newWorkItem.title,  // API expects 'taskName' not 'title'
+        description: newWorkItem.description,
+        hours: newWorkItem.hours,  // API expects 'hours' not 'hoursSpent'
+        workDate: new Date().toISOString().split('T')[0],
+      };
+      
+      const response = await workLogService.createWorkLog(workLogData);
+      if (response.success) {
+        showSnackbar('Work item added successfully!', 'success');
+        setNewWorkItem({ title: '', description: '', hours: 1 });
+        setWorkDialog(false);
+        await fetchTodayWorkLogs();
+      } else {
+        showSnackbar(response.message || 'Failed to add work item', 'error');
+      }
+    } catch (error) {
+      console.error('Error adding work item:', error);
+      showSnackbar('Failed to add work item', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const submitRating = () => {
@@ -153,7 +307,52 @@ const EmployeeTracking = () => {
   };
 
   const getTotalHours = () => {
-    return workItems.reduce((total, item) => total + item.hours, 0);
+    // Calculate hours based on check-in and check-out times
+    if (checkInTime && checkOutTime && checkOutTime !== 'N/A') {
+      try {
+        // Parse time strings in 12-hour format (e.g., "02:04 PM")
+        const parseTime = (timeStr) => {
+          // Handle time string with format like "02:04 PM" or "2:14:32 PM"
+          const timeParts = timeStr.split(' ');
+          if (timeParts.length < 2) return null;
+          
+          const period = timeParts[timeParts.length - 1]; // AM or PM
+          const time = timeParts.slice(0, -1).join(' '); // Rest is the time
+          const [hours, minutes] = time.split(':').map(Number);
+          
+          if (isNaN(hours) || isNaN(minutes)) return null;
+          
+          let h = hours;
+          if (period === 'PM' && h !== 12) {
+            h += 12;
+          } else if (period === 'AM' && h === 12) {
+            h = 0;
+          }
+          
+          return h * 60 + minutes; // Return minutes since midnight
+        };
+        
+        const checkInMinutes = parseTime(checkInTime);
+        const checkOutMinutes = parseTime(checkOutTime);
+        
+        if (checkInMinutes === null || checkOutMinutes === null) {
+          return 0;
+        }
+        
+        // Calculate difference in hours
+        let diffMinutes = checkOutMinutes - checkInMinutes;
+        if (diffMinutes < 0) {
+          diffMinutes += 24 * 60; // Handle overnight shifts
+        }
+        
+        const hours = (diffMinutes / 60).toFixed(2);
+        return parseFloat(hours);
+      } catch (e) {
+        console.error('Error calculating total hours:', e);
+        return 0;
+      }
+    }
+    return 0;
   };
 
   return (
@@ -163,7 +362,12 @@ const EmployeeTracking = () => {
           Employee Tracking
         </Typography>
 
-        <Grid container spacing={3}>
+        {loading && workItems.length === 0 && attendanceHistory.length === 0 ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <Grid container spacing={3}>
           {/* Attendance Section */}
           <Grid item xs={12} md={6}>
             <Card>
@@ -182,13 +386,15 @@ const EmployeeTracking = () => {
                       variant="contained"
                       size="large"
                       onClick={handleCheckIn}
+                      disabled={loading}
+                      startIcon={loading ? <CircularProgress size={20} /> : null}
                       sx={{
                         py: 2,
                         px: 4,
                         fontSize: '1.1rem',
                       }}
                     >
-                      Check In
+                      {loading ? 'Checking In...' : 'Check In'}
                     </Button>
                   </Box>
                 ) : !checkedOut ? (
@@ -204,13 +410,15 @@ const EmployeeTracking = () => {
                       variant="outlined"
                       size="large"
                       onClick={handleCheckOut}
+                      disabled={loading}
+                      startIcon={loading ? <CircularProgress size={20} /> : null}
                       sx={{
                         py: 2,
                         px: 4,
                         fontSize: '1.1rem',
                       }}
                     >
-                      Check Out
+                      {loading ? 'Checking Out...' : 'Check Out'}
                     </Button>
                   </Box>
                 ) : (
@@ -272,6 +480,7 @@ const EmployeeTracking = () => {
                     variant="contained"
                     startIcon={<Add />}
                     onClick={() => setWorkDialog(true)}
+                    disabled={loading}
                   >
                     Add Work Item
                   </Button>
@@ -371,36 +580,47 @@ const EmployeeTracking = () => {
                 <Typography variant="h6" gutterBottom>
                   Recent Attendance History
                 </Typography>
-                <TableContainer>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Date</TableCell>
-                        <TableCell>Status</TableCell>
-                        <TableCell>Time</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {attendanceHistory.map((record, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{record.date}</TableCell>
-                          <TableCell>
-                            <Chip
-                              label={record.status}
-                              color={record.status === 'Present' ? 'success' : 'warning'}
-                              size="small"
-                            />
-                          </TableCell>
-                          <TableCell>{record.time}</TableCell>
+                {attendanceHistory.length === 0 ? (
+                  <Box sx={{ textAlign: 'center', py: 4 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      No attendance records found.
+                    </Typography>
+                  </Box>
+                ) : (
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Date</TableCell>
+                          <TableCell>Status</TableCell>
+                          <TableCell>Check In</TableCell>
+                          <TableCell>Check Out</TableCell>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                      </TableHead>
+                      <TableBody>
+                        {attendanceHistory.map((record, index) => (
+                          <TableRow key={index}>
+                            <TableCell>{record.date}</TableCell>
+                            <TableCell>
+                              <Chip
+                                label={record.status}
+                                color={record.status === 'Present' ? 'success' : 'warning'}
+                                size="small"
+                              />
+                            </TableCell>
+                            <TableCell>{record.checkInTime}</TableCell>
+                            <TableCell>{record.checkOutTime}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
               </CardContent>
             </Card>
           </Grid>
         </Grid>
+        )}
 
         {/* Add Work Item Dialog */}
         <Dialog open={workDialog} onClose={() => setWorkDialog(false)} maxWidth="md" fullWidth>
@@ -433,10 +653,33 @@ const EmployeeTracking = () => {
             />
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setWorkDialog(false)}>Cancel</Button>
-            <Button onClick={handleAddWorkItem} variant="contained">Add Item</Button>
+            <Button onClick={() => setWorkDialog(false)} disabled={loading}>Cancel</Button>
+            <Button 
+              onClick={handleAddWorkItem} 
+              variant="contained"
+              disabled={loading || !newWorkItem.title.trim()}
+              startIcon={loading ? <CircularProgress size={20} /> : null}
+            >
+              {loading ? 'Adding...' : 'Add Item'}
+            </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Snackbar for notifications */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert 
+            onClose={() => setSnackbar({ ...snackbar, open: false })} 
+            severity={snackbar.severity}
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Box>
     </Layout>
   );

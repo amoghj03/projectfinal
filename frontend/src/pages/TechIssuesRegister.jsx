@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -37,6 +37,8 @@ import {
   MenuList,
   ListItemIcon,
   Divider,
+  CircularProgress,
+  Snackbar,
 } from '@mui/material';
 import {
   BugReport,
@@ -55,6 +57,7 @@ import {
   Close,
 } from '@mui/icons-material';
 import { Layout } from './Dashboard';
+import techIssueService from '../services/techIssueService';
 
 const TabPanel = ({ children, value, index }) => (
   <div role="tabpanel" hidden={value !== index}>
@@ -73,6 +76,8 @@ const TechIssuesRegister = () => {
   const [closeDialog, setCloseDialog] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState(null);
   const [closeComments, setCloseComments] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   
   const [newIssue, setNewIssue] = useState({
     title: '',
@@ -84,53 +89,58 @@ const TechIssuesRegister = () => {
     actualBehavior: ''
   });
 
-  const [techIssues, setTechIssues] = useState([
-    {
-      id: 'TECH001',
-      title: 'Login system timeout error',
-      description: 'System automatically logs out users after 5 minutes of inactivity instead of the expected 30 minutes',
-      category: 'authentication',
-      impact: 'medium',
-      status: 'open',
-      submittedDate: '2024-11-20',
-      submittedBy: 'John Doe',
-      lastUpdate: '2024-11-20',
-      stepsToReproduce: '1. Login to system\n2. Leave inactive for 5 minutes\n3. Try to perform any action',
-      expectedBehavior: 'Session should remain active for 30 minutes',
-      actualBehavior: 'Session expires after 5 minutes'
-    },
-    {
-      id: 'TECH002',
-      title: 'Customer database search malfunction',
-      description: 'Search function returns incorrect customer records when using partial name matches',
-      category: 'database',
-      impact: 'high',
-      status: 'in_progress',
-      submittedDate: '2024-11-18',
-      submittedBy: 'John Doe',
-      lastUpdate: '2024-11-21',
-      assignedTo: 'IT Support Team',
-      stepsToReproduce: '1. Go to customer search\n2. Enter partial name (e.g., "John")\n3. Check results',
-      expectedBehavior: 'Should return all customers with "John" in their name',
-      actualBehavior: 'Returns random customer records'
-    },
-    {
-      id: 'TECH003',
-      title: 'Report generation performance issue',
-      description: 'Monthly reports take excessively long time to generate, often timing out',
-      category: 'performance',
-      impact: 'medium',
-      status: 'closed',
-      submittedDate: '2024-11-15',
-      submittedBy: 'John Doe',
-      lastUpdate: '2024-11-19',
-      resolution: 'Database indexing optimized, report generation now takes 2-3 minutes',
-      closingComments: 'Issue resolved by optimizing database queries and adding proper indexing',
-      stepsToReproduce: '1. Navigate to Reports section\n2. Select Monthly Summary Report\n3. Choose date range\n4. Click Generate',
-      expectedBehavior: 'Report should generate within 5 minutes',
-      actualBehavior: 'Report generation times out after 15 minutes'
+  const hasFetchedData = useRef(false);
+
+  const [techIssues, setTechIssues] = useState([]);
+
+  // Fetch tech issues on component mount
+  useEffect(() => {
+    if (!hasFetchedData.current) {
+      hasFetchedData.current = true;
+      fetchTechIssues();
     }
-  ]);
+  }, []);
+
+  const showSnackbar = (message, severity = 'success') => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const fetchTechIssues = async () => {
+    setLoading(true);
+    try {
+      const response = await techIssueService.getTechIssues();
+      
+      if (response.success && response.data) {
+        // Transform backend data to match frontend format
+        const formattedIssues = response.data.map(issue => ({
+          id: issue.id, // Use actual database ID
+          issueNumber: issue.issueNumber, // Keep issue number for display
+          title: issue.title,
+          description: issue.description,
+          category: issue.category.toLowerCase(),
+          impact: issue.impact.toLowerCase(),
+          status: issue.status.toLowerCase().replace(/\s+/g, '_').replace('approval_', ''),
+          submittedDate: new Date(issue.submittedDate).toISOString().split('T')[0],
+          submittedBy: issue.submittedBy,
+          lastUpdate: new Date(issue.lastUpdate).toISOString().split('T')[0],
+          stepsToReproduce: issue.stepsToReproduce,
+          expectedBehavior: issue.expectedBehavior,
+          actualBehavior: issue.actualBehavior,
+          assignedTo: issue.assignedTo,
+          resolution: issue.resolution,
+          closingComments: issue.closingComments
+        }));
+        setTechIssues(formattedIssues);
+      } else {
+        showSnackbar('Failed to load tech issues', 'error');
+      }
+    } catch (error) {
+      console.error('Error fetching tech issues:', error);
+      showSnackbar('Failed to load tech issues', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const categories = [
     { value: 'authentication', label: 'Authentication/Login', icon: <Security /> },
@@ -168,36 +178,44 @@ const TechIssuesRegister = () => {
 
   const statuses = [
     { value: 'open', label: 'Open', color: 'error' },
+    { value: 'pending', label: 'Pending Approval', color: 'warning' },
     { value: 'in_progress', label: 'In Progress', color: 'warning' },
     { value: 'resolved', label: 'Resolved', color: 'success' },
     { value: 'closed', label: 'Closed', color: 'default' }
   ];
 
-  const handleSubmitIssue = () => {
+  const handleSubmitIssue = async () => {
     if (!newIssue.title.trim() || !newIssue.description.trim() || !newIssue.category) {
+      showSnackbar('Please fill in all required fields', 'error');
       return;
     }
 
-    const issue = {
-      id: `TECH${String(techIssues.length + 1).padStart(3, '0')}`,
-      ...newIssue,
-      status: 'open',
-      submittedDate: new Date().toISOString().split('T')[0],
-      submittedBy: localStorage.getItem('employeeName') || 'John Doe',
-      lastUpdate: new Date().toISOString().split('T')[0]
-    };
-
-    setTechIssues(prev => [issue, ...prev]);
-    setNewIssue({
-      title: '',
-      description: '',
-      category: '',
-      impact: 'low',
-      stepsToReproduce: '',
-      expectedBehavior: '',
-      actualBehavior: ''
-    });
-    setIssueDialog(false);
+    setLoading(true);
+    try {
+      const response = await techIssueService.submitTechIssue(newIssue);
+      
+      if (response.success && response.data) {
+        showSnackbar('Tech issue submitted successfully', 'success');
+        setNewIssue({
+          title: '',
+          description: '',
+          category: '',
+          impact: 'low',
+          stepsToReproduce: '',
+          expectedBehavior: '',
+          actualBehavior: ''
+        });
+        setTabValue(0); // Switch to "My Issues" tab
+        await fetchTechIssues(); // Refresh the issues list
+      } else {
+        showSnackbar(response.message || 'Failed to submit tech issue', 'error');
+      }
+    } catch (error) {
+      console.error('Error submitting tech issue:', error);
+      showSnackbar('Failed to submit tech issue', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getImpactInfo = (impact) => {
@@ -236,27 +254,45 @@ const TechIssuesRegister = () => {
     setCloseDialog(true);
   };
 
-  const confirmCloseIssue = () => {
+  const confirmCloseIssue = async () => {
     if (selectedIssue && closeComments.trim()) {
-      setTechIssues(prev => prev.map(issue => 
-        issue.id === selectedIssue.id 
-          ? { 
-              ...issue, 
-              status: 'closed', 
-              closingComments: closeComments.trim(),
-              lastUpdate: new Date().toISOString().split('T')[0]
-            }
-          : issue
-      ));
-      setCloseDialog(false);
-      setSelectedIssue(null);
-      setCloseComments('');
+      setLoading(true);
+      try {
+        // Extract the numeric ID from the issue number (e.g., "TECH001" -> find actual DB ID)
+        // First, find the issue in the original list to get its actual ID
+        const issue = techIssues.find(i => i.id === selectedIssue.id);
+        
+        // For now, we'll need to store the actual database ID when fetching issues
+        // Let's extract it from the response or use the issue number
+        const response = await techIssueService.closeTechIssue(selectedIssue.id, closeComments.trim());
+        
+        if (response.success && response.data) {
+          showSnackbar(response.message || 'Tech issue closed successfully', 'success');
+          setCloseDialog(false);
+          setSelectedIssue(null);
+          setCloseComments('');
+          await fetchTechIssues(); // Refresh the list
+        } else {
+          showSnackbar(response.message || 'Failed to close tech issue', 'error');
+        }
+      } catch (error) {
+        console.error('Error closing tech issue:', error);
+        showSnackbar('Failed to close tech issue', 'error');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   return (
     <Layout>
       <Box>
+        {loading && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+            <CircularProgress />
+          </Box>
+        )}
+        
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
           <Typography variant="h4">
             Tech Issues Register
@@ -414,7 +450,7 @@ const TechIssuesRegister = () => {
                         return (
                           <React.Fragment key={issue.id}>
                             <TableRow>
-                              <TableCell>{issue.id}</TableCell>
+                              <TableCell>{issue.issueNumber || issue.id}</TableCell>
                               <TableCell>
                                 <Typography variant="subtitle2">
                                   {issue.title}
@@ -727,7 +763,7 @@ const TechIssuesRegister = () => {
           fullWidth
         >
           <DialogTitle>
-            Close Issue: {selectedIssue?.id}
+            Close Issue: {selectedIssue?.issueNumber || selectedIssue?.id}
           </DialogTitle>
           <DialogContent>
             <Typography variant="body2" color="text.secondary" paragraph>
@@ -758,6 +794,22 @@ const TechIssuesRegister = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Snackbar for notifications */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <Alert 
+            onClose={() => setSnackbar({ ...snackbar, open: false })} 
+            severity={snackbar.severity}
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Box>
     </Layout>
   );

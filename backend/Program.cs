@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using BankAPI.Data;
 using BankAPI.Services;
+using BankAPI.Services.Admin;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +17,14 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Register application services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ILeaveService, LeaveService>();
+builder.Services.AddScoped<ComplaintService>();
+builder.Services.AddScoped<TechIssueService>();
+builder.Services.AddScoped<AttendanceService>();
+builder.Services.AddScoped<WorkLogService>();
+builder.Services.AddScoped<DashboardService>();
+
+// Register admin services
+builder.Services.AddScoped<AdminDashboardService>();
 
 // Configure CORS for frontend access
 builder.Services.AddCors(options =>
@@ -38,8 +47,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
-app.UseHttpsRedirection();
 
 app.UseCors("AllowFrontend");
 

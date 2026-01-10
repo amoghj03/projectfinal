@@ -59,6 +59,9 @@ public class Complaint
     [Column("updated_at")]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    [Column("requires_approval")]
+    public bool RequiresApproval { get; set; } = true;
+
     // Navigation properties
     [ForeignKey("TenantId")]
     public virtual Tenant Tenant { get; set; } = null!;

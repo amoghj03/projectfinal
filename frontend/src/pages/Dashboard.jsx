@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Drawer,
@@ -20,6 +20,9 @@ import {
   LinearProgress,
   useMediaQuery,
   useTheme,
+  CircularProgress,
+  Alert,
+  Snackbar,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -38,6 +41,7 @@ import {
   EventAvailable,
 } from '@mui/icons-material';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
+import dashboardService from '../services/dashboardService';
 
 const drawerWidth = 280;
 
@@ -250,6 +254,92 @@ const Layout = ({ children }) => {
 const Dashboard = () => {
   const navigate = useNavigate();
   const employeeName = localStorage.getItem('employeeName') || 'John Doe';
+  
+  const [loading, setLoading] = useState(true);
+  const [dashboardStats, setDashboardStats] = useState(null);
+  const [error, setError] = useState(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
+  const hasFetchedData = useRef(false);
+
+  // Fetch dashboard data on mount
+  useEffect(() => {
+    if (!hasFetchedData.current) {
+      fetchDashboardData();
+      hasFetchedData.current = true;
+    }
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await dashboardService.getDashboardStats();
+      setDashboardStats(data);
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+      setError('Failed to load dashboard data. Please try again.');
+      showSnackbar('Failed to load dashboard data', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const showSnackbar = (message, severity = 'info') => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
+
+  // Map API data to analytics cards
+  const getAnalyticsCards = () => {
+    if (!dashboardStats) {
+      return [
+        {
+          title: 'Attendance Rate',
+          value: '0%',
+          icon: <TrendingUp />,
+          color: 'success',
+        },
+        {
+          title: 'Tasks Completed',
+          value: '0',
+          icon: <Assignment />,
+          color: 'primary',
+        },
+        {
+          title: 'Skill Score',
+          value: '0/10',
+          icon: <Stars />,
+          color: 'warning',
+        },
+      ];
+    }
+
+    return [
+      {
+        title: 'Attendance Rate',
+        value: `${dashboardStats.attendanceStats.attendanceRate}%`,
+        icon: <TrendingUp />,
+        color: 'success',
+      },
+      {
+        title: 'Tasks Completed',
+        value: dashboardStats.taskStats.tasksCompleted.toString(),
+        icon: <Assignment />,
+        color: 'primary',
+      },
+      {
+        title: 'Skill Score',
+        value: `${dashboardStats.skillStats.averageScore}/10`,
+        icon: <Stars />,
+        color: 'warning',
+      },
+    ];
+  };
+
+  const analyticsCards = getAnalyticsCards();
 
   const quickAccessCards = [
     {
@@ -260,11 +350,11 @@ const Dashboard = () => {
       path: '/employee-tracking',
     },
     {
-      title: 'Employee Tracking',
-      description: 'Track work progress & ratings',
-      icon: <PersonOutline sx={{ fontSize: 40, color: '#81C784' }} />,
+      title: 'Leave Request',
+      description: 'Apply for leave',
+      icon: <EventAvailable sx={{ fontSize: 40, color: '#81C784' }} />,
       color: '#E8F5E8',
-      path: '/employee-tracking',
+      path: '/leave-request',
     },
     {
       title: 'Skill Management',
@@ -289,37 +379,43 @@ const Dashboard = () => {
     },
   ];
 
-  const analyticsCards = [
-    {
-      title: 'Attendance Rate',
-      value: '92%',
-      change: '+5%',
-      icon: <TrendingUp />,
-      color: 'success',
-    },
-    {
-      title: 'Tasks Completed',
-      value: '24',
-      change: '+12%',
-      icon: <Assignment />,
-      color: 'primary',
-    },
-    {
-      title: 'Skill Score',
-      value: '8.5/10',
-      change: '+0.5',
-      icon: <Stars />,
-      color: 'warning',
-    },
-  ];
+  // Show loading state
+  if (loading) {
+    return (
+      <Layout>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+          <CircularProgress />
+        </Box>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
       <Box>
+        {/* Snackbar for notifications */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+
+        {/* Error Alert */}
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+
         {/* Welcome Section */}
         <Box sx={{ mb: 4 }}>
           <Typography variant="h4" gutterBottom>
-            Welcome back, {employeeName.split(' ')[0]}! 👋
+            Welcome back, {dashboardStats?.employeeName?.split(' ')[0] || employeeName.split(' ')[0]}! 👋
           </Typography>
           <Typography variant="subtitle1" color="text.secondary">
             Here's your overview for today, {new Date().toLocaleDateString('en-US', { 
@@ -329,6 +425,11 @@ const Dashboard = () => {
               day: 'numeric' 
             })}
           </Typography>
+          {dashboardStats && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              {dashboardStats.department} • {dashboardStats.jobRole}
+            </Typography>
+          )}
         </Box>
 
         {/* Analytics Widgets */}
@@ -348,12 +449,6 @@ const Dashboard = () => {
                       </Typography>
                     </Box>
                   </Box>
-                  <Chip
-                    label={card.change}
-                    color={card.color}
-                    size="small"
-                    variant="outlined"
-                  />
                 </CardContent>
               </Card>
             </Grid>
@@ -410,6 +505,61 @@ const Dashboard = () => {
             </Grid>
           ))}
         </Grid>
+
+        {/* Recent Activities Section */}
+        {dashboardStats && dashboardStats.recentActivities && dashboardStats.recentActivities.length > 0 && (
+          <Box sx={{ mt: 4 }}>
+            <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
+              Recent Activities
+            </Typography>
+            <Grid container spacing={2}>
+              {dashboardStats.recentActivities.map((activity, index) => (
+                <Grid item xs={12} key={index}>
+                  <Card>
+                    <CardContent>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                          <Chip
+                            label={activity.type}
+                            size="small"
+                            color={
+                              activity.type === 'Leave' ? 'primary' :
+                              activity.type === 'Complaint' ? 'error' :
+                              activity.type === 'TechIssue' ? 'warning' : 'default'
+                            }
+                            sx={{ mr: 2 }}
+                          />
+                          <Box>
+                            <Typography variant="body1" fontWeight="medium">
+                              {activity.title}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {activity.description}
+                            </Typography>
+                          </Box>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Chip
+                            label={activity.status}
+                            size="small"
+                            color={
+                              activity.status === 'Approved' || activity.status === 'Completed' || activity.status === 'Resolved' ? 'success' :
+                              activity.status === 'Pending' ? 'warning' :
+                              activity.status === 'Rejected' ? 'error' : 'default'
+                            }
+                          />
+                          <Typography variant="caption" color="text.secondary">
+                            {new Date(activity.date).toLocaleDateString()}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
+        )}
       </Box>
     </Layout>
   );

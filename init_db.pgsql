@@ -273,6 +273,7 @@ CREATE TABLE complaints (
     status VARCHAR(50) DEFAULT 'Open',
     assigned_to BIGINT REFERENCES employees(id),
     resolved_at TIMESTAMP,
+    requires_approval BOOLEAN DEFAULT true,
     resolution_notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -352,6 +353,22 @@ CREATE TABLE audit_logs (
     user_agent TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE settings (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    tenant_id BIGINT NOT NULL
+        REFERENCES tenants(id) ON DELETE CASCADE,
+    key VARCHAR(150) NOT NULL,
+    value VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (tenant_id, key)
+);
+
+INSERT INTO settings (tenant_id, key, value)
+VALUES
+(1, 'RequireComplaintApproval', 'true'),(1, 'TechIssueApproval', 'true');
+
+
 
 -- Insert initial data
 INSERT INTO tenants (name, slug, subdomain, contact_email, country, timezone, subscription_plan, subscription_status, max_employees)

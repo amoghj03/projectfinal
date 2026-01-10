@@ -1,28 +1,46 @@
+import axios from 'axios';
+
 const API_BASE_URL = 'http://localhost:5000/api';
 
-class LeaveService {
-  getAuthToken() {
-    return localStorage.getItem('authToken');
-  }
+// Create axios instance with default config
+const axiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-  getHeaders() {
-    const token = this.getAuthToken();
-    console.log('Token in getHeaders:', token); // Debug log
-    const headers = {
-      'Content-Type': 'application/json', 
-    };
-    
+// Add request interceptor to include auth token
+axiosInstance.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('authToken');
     if (token && token !== 'null' && token !== 'undefined') {
-      headers['Authorization'] = `Bearer ${token}`;
-      console.log('Authorization header added:', headers['Authorization']); // Debug log
+      config.headers.Authorization = `Bearer ${token}`;
+      console.log('Authorization header added:', config.headers.Authorization);
     } else {
       console.error('Token is invalid or missing:', token);
     }
-    
-    console.log('Final headers:', headers); // Debug log
-    return headers;
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
+);
 
+// Add response interceptor for error handling
+axiosInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Handle unauthorized - redirect to login
+      localStorage.removeItem('authToken');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+class LeaveService {
   /**
    * Submit a new leave request
    * @param {Object} requestData - Leave request data
@@ -35,14 +53,8 @@ class LeaveService {
    */
   async submitLeaveRequest(requestData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/Leave/submit`, {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify(requestData),
-      });
-
-      const data = await response.json();
-      return data;
+      const response = await axiosInstance.post('/Leave/submit', requestData);
+      return response.data;
     } catch (error) {
       console.error('Error submitting leave request:', error);
       throw error;
@@ -54,13 +66,8 @@ class LeaveService {
    */
   async getLeaveRequests() {
     try {
-      const response = await fetch(`${API_BASE_URL}/Leave/requests`, {
-        method: 'GET',
-        headers: this.getHeaders(),
-      });
-
-      const data = await response.json();
-      return data;
+      const response = await axiosInstance.get('/Leave/requests');
+      return response.data;
     } catch (error) {
       console.error('Error fetching leave requests:', error);
       throw error;
@@ -72,15 +79,10 @@ class LeaveService {
    */
   async getLeaveBalance() {
     try {
-      const response = await fetch(`${API_BASE_URL}/Leave/balance`, {
-        method: 'GET',
-        headers: this.getHeaders(),
-      });
-
-      const data = await response.json();
-      return data;
+      const response = await axiosInstance.get('/Leave/balance');
+      return response.data;
     } catch (error) {
-      console.error('Error fetching leave balance:', error);
+      console.error('Error fetching leave balance:', error); 
       throw error;
     }
   }
@@ -91,13 +93,8 @@ class LeaveService {
    */
   async getLeaveRequestById(leaveRequestId) {
     try {
-      const response = await fetch(`${API_BASE_URL}/Leave/requests/${leaveRequestId}`, {
-        method: 'GET',
-        headers: this.getHeaders(),
-      });
-
-      const data = await response.json();
-      return data;
+      const response = await axiosInstance.get(`/Leave/requests/${leaveRequestId}`);
+      return response.data;
     } catch (error) {
       console.error('Error fetching leave request:', error);
       throw error;
@@ -109,13 +106,8 @@ class LeaveService {
    */
   async getLeaveTypes() {
     try {
-      const response = await fetch(`${API_BASE_URL}/Leave/types`, {
-        method: 'GET',
-        headers: this.getHeaders(),
-      });
-
-      const data = await response.json();
-      return data;
+      const response = await axiosInstance.get('/Leave/types');
+      return response.data;
     } catch (error) {
       console.error('Error fetching leave types:', error);
       throw error;

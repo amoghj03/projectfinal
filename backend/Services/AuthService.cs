@@ -77,7 +77,7 @@ public class AuthService : IAuthService
             var roles = employee.EmployeeRoles.Select(er => er.Role).ToList();
             var hasAdminAccess = roles.Any(r => r.Name == "Admin" || r.Name == "HR");
             string? adminRole = null;
-            
+
             if (roles.Any(r => r.Name == "Admin"))
             {
                 // Check if super admin (CEO) or regular admin

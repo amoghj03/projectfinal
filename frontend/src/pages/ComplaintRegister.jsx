@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -35,6 +35,8 @@ import {
   IconButton,
   Collapse,
   TablePagination,
+  CircularProgress,
+  Snackbar,
 } from '@mui/material';
 import {
   ReportProblem,
@@ -51,6 +53,7 @@ import {
   Close,
 } from '@mui/icons-material';
 import { Layout } from './Dashboard';
+import complaintService from '../services/complaintService';
 
 const TabPanel = ({ children, value, index }) => (
   <div role="tabpanel" hidden={value !== index}>
@@ -68,6 +71,8 @@ const ComplaintRegister = () => {
   const [closeDialog, setCloseDialog] = useState(false);
   const [selectedComplaint, setSelectedComplaint] = useState(null);
   const [closeComments, setCloseComments] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   
   const [newComplaint, setNewComplaint] = useState({
     title: '',
@@ -76,43 +81,53 @@ const ComplaintRegister = () => {
     priority: 'medium'
   });
 
-  const [complaints, setComplaints] = useState([
-    {
-      id: 'CMP001',
-      title: 'Inadequate workplace lighting',
-      description: 'The lighting in the third floor workspace is insufficient, causing eye strain during work hours.',
-      category: 'workplace',
-      priority: 'medium',
-      status: 'open',
-      submittedDate: '2024-11-20',
-      submittedBy: 'John Doe',
-      lastUpdate: '2024-11-20'
-    },
-    {
-      id: 'CMP002',
-      title: 'Harassment by supervisor',
-      description: 'Experiencing inappropriate behavior and unprofessional conduct from immediate supervisor.',
-      category: 'hr',
-      priority: 'high',
-      status: 'in_progress',
-      submittedDate: '2024-11-18',
-      submittedBy: 'John Doe',
-      lastUpdate: '2024-11-21'
-    },
-    {
-      id: 'CMP003',
-      title: 'Outdated computer equipment',
-      description: 'Current workstation is running slowly and affecting productivity. Request for hardware upgrade.',
-      category: 'it',
-      priority: 'low',
-      status: 'closed',
-      submittedDate: '2024-11-15',
-      submittedBy: 'John Doe',
-      lastUpdate: '2024-11-19',
-      resolution: 'Hardware upgrade scheduled for next quarter',
-      closingComments: 'Issue resolved - new computer equipment will be provided in Q1 2025'
+  const hasFetchedData = useRef(false);
+
+  const [complaints, setComplaints] = useState([]);
+
+  // Fetch complaints on component mount
+  useEffect(() => {
+    if (!hasFetchedData.current) {
+      hasFetchedData.current = true;
+      fetchComplaints();
     }
-  ]);
+  }, []);
+
+  const showSnackbar = (message, severity = 'success') => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const fetchComplaints = async () => {
+    setLoading(true);
+    try {
+      const response = await complaintService.getComplaints();
+      
+      if (response.success && response.data) {
+        // Transform backend data to match frontend format
+        const formattedComplaints = response.data.map(complaint => ({
+          id: complaint.complaintNumber,
+          title: complaint.title,
+          description: complaint.description,
+          category: complaint.category.toLowerCase(),
+          priority: complaint.priority.toLowerCase(),
+          status: complaint.status.toLowerCase().replace(' ', '_'),
+          submittedDate: new Date(complaint.submittedDate).toISOString().split('T')[0],
+          submittedBy: complaint.submittedBy,
+          lastUpdate: new Date(complaint.lastUpdate).toISOString().split('T')[0],
+          resolution: complaint.resolution,
+          closingComments: complaint.closingComments
+        }));
+        setComplaints(formattedComplaints);
+      } else {
+        showSnackbar('Failed to load complaints', 'error');
+      }
+    } catch (error) {
+      console.error('Error fetching complaints:', error);
+      showSnackbar('Failed to load complaints', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const categories = [
     { value: 'workplace', label: 'Workplace Environment' },
@@ -135,23 +150,30 @@ const ComplaintRegister = () => {
     { value: 'closed', label: 'Closed', color: 'success', icon: <CheckCircle /> }
   ];
 
-  const handleSubmitComplaint = () => {
+  const handleSubmitComplaint = async () => {
     if (!newComplaint.title.trim() || !newComplaint.description.trim() || !newComplaint.category) {
+      showSnackbar('Please fill in all required fields', 'error');
       return;
     }
 
-    const complaint = {
-      id: `CMP${String(complaints.length + 1).padStart(3, '0')}`,
-      ...newComplaint,
-      status: 'open',
-      submittedDate: new Date().toISOString().split('T')[0],
-      submittedBy: localStorage.getItem('employeeName') || 'John Doe',
-      lastUpdate: new Date().toISOString().split('T')[0]
-    };
-
-    setComplaints(prev => [complaint, ...prev]);
-    setNewComplaint({ title: '', description: '', category: '', priority: 'medium' });
-    setComplaintDialog(false);
+    setLoading(true);
+    try {
+      const response = await complaintService.submitComplaint(newComplaint);
+      
+      if (response.success && response.data) {
+        showSnackbar('Complaint submitted successfully', 'success');
+        setNewComplaint({ title: '', description: '', category: '', priority: 'medium' });
+        setTabValue(0); // Switch to "My Complaints" tab
+        await fetchComplaints(); // Refresh the complaints list
+      } else {
+        showSnackbar(response.message || 'Failed to submit complaint', 'error');
+      }
+    } catch (error) {
+      console.error('Error submitting complaint:', error);
+      showSnackbar('Failed to submit complaint', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getStatusInfo = (status) => {
@@ -210,6 +232,12 @@ const ComplaintRegister = () => {
   return (
     <Layout>
       <Box>
+        {loading && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+            <CircularProgress />
+          </Box>
+        )}
+        
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
           <Typography variant="h4">
             Complaint Register
@@ -640,6 +668,22 @@ const ComplaintRegister = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Snackbar for notifications */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <Alert 
+            onClose={() => setSnackbar({ ...snackbar, open: false })} 
+            severity={snackbar.severity}
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Box>
     </Layout>
   );

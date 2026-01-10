@@ -20,6 +20,7 @@ import {
   Lock,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import authService from '../services/authService';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -29,6 +30,7 @@ const Login = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -48,67 +50,18 @@ const Login = () => {
       return;
     }
 
+    setLoading(true);
+
     try {
-      // Call backend API
-      const response = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        setError(data.message || 'Invalid credentials. Please check your email and password.');
-        return;
-      }
-
-      // Store authentication token
-      localStorage.setItem('authToken', data.token);
-
-      // Store employee information
-      const user = data.user;
-      localStorage.setItem('employeeName', user.name);
-      localStorage.setItem('employeeId', user.employeeId);
+      await authService.login(formData.email, formData.password);
       
-      // Store admin permissions if available
-      if (user.adminPermissions) {
-        localStorage.setItem('adminPermissions', JSON.stringify(user.adminPermissions));
-      }
-      
-      // Check role and set admin permissions
-      if (user.adminRole === 'superadmin') {
-        // CEO/Super Admin gets full access
-        localStorage.setItem('adminName', user.name);
-        localStorage.setItem('userRole', 'employee');
-        localStorage.setItem('hasAdminAccess', 'true');
-        localStorage.setItem('adminRole', 'superadmin');
-        localStorage.setItem('adminBranch', user.branch);
-        localStorage.setItem('selectedBranch', 'All Branches');
-      } else if (user.hasAdminAccess) {
-        // Manager/Admin gets branch-specific access
-        localStorage.setItem('adminName', user.name);
-        localStorage.setItem('userRole', 'employee');
-        localStorage.setItem('hasAdminAccess', 'true');
-        localStorage.setItem('adminRole', user.adminRole || 'admin');
-        localStorage.setItem('adminBranch', user.branch);
-        localStorage.setItem('selectedBranch', user.branch);
-      } else {
-        // Regular employees get employee portal access only
-        localStorage.setItem('userRole', 'employee');
-        localStorage.setItem('hasAdminAccess', 'false');
-      }
-
-      // Navigate to dashboard
+      // Navigate to dashboard on success
       navigate('/dashboard');
     } catch (error) {
       console.error('Login error:', error);
-      setError('Unable to connect to server. Please try again later.');
+      setError(error.message || 'Unable to connect to server. Please try again later.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -173,6 +126,7 @@ const Login = () => {
               value={formData.email}
               onChange={handleInputChange}
               margin="normal"
+              disabled={loading}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -191,6 +145,7 @@ const Login = () => {
               value={formData.password}
               onChange={handleInputChange}
               margin="normal"
+              disabled={loading}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -202,6 +157,7 @@ const Login = () => {
                     <IconButton
                       onClick={togglePasswordVisibility}
                       edge="end"
+                      disabled={loading}
                     >
                       {showPassword ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
@@ -216,13 +172,14 @@ const Login = () => {
               fullWidth
               variant="contained"
               size="large"
+              disabled={loading}
               sx={{
                 mb: 2,
                 py: 1.5,
                 fontSize: '1.1rem',
               }}
             >
-              Sign In
+              {loading ? 'Signing In...' : 'Sign In'}
             </Button>
 
             <Box sx={{ textAlign: 'center' }}>

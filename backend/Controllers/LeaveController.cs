@@ -6,17 +6,15 @@ using BankAPI.Services;
 
 namespace BankAPI.Controllers;
 
-[ApiController]
 [Route("api/[controller]")]
-public class LeaveController : ControllerBase
+public class LeaveController : BaseApiController
 {
     private readonly ILeaveService _leaveService;
-    private readonly ApplicationDbContext _context;
 
     public LeaveController(ILeaveService leaveService, ApplicationDbContext context)
+        : base(context)
     {
         _leaveService = leaveService;
-        _context = context;
     }
 
     /// <summary>
@@ -203,42 +201,4 @@ public class LeaveController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Helper method to extract employee ID from authorization token
-    /// In production, this should decode JWT token and extract employee ID from claims
-    /// </summary>
-    private long GetEmployeeIdFromAuth()
-    {
-        try
-        {
-            // Get token from Authorization header
-            var authHeader = Request.Headers["Authorization"].FirstOrDefault();
-            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-            {
-                return 0;
-            }
-
-            var token = authHeader.Substring("Bearer ".Length).Trim();
-
-            // Decode token (simplified - in production use proper JWT validation)
-            var tokenBytes = Convert.FromBase64String(token);
-            var tokenData = System.Text.Encoding.UTF8.GetString(tokenBytes);
-            var parts = tokenData.Split(':');
-
-            if (parts.Length < 2)
-            {
-                return 0;
-            }
-
-            var userId = long.Parse(parts[0]);
-
-            // Get employee ID from user ID
-            var employee = _context.Employees.FirstOrDefault(e => e.UserId == userId);
-            return employee?.Id ?? 0;
-        }
-        catch
-        {
-            return 0;
-        }
-    }
 }

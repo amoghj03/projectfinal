@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Drawer,
@@ -25,6 +25,8 @@ import {
   Select,
   MenuItem,
   InputAdornment,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -47,6 +49,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useBranch } from '../../contexts/BranchContext';
+import dashboardService from '../../services/dashboardService';
 
 const drawerWidth = 280;
 
@@ -309,65 +312,78 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const { getEffectiveBranch, isSuperAdmin } = useBranch();
 
-  // Mock data for admin dashboard - dynamic based on branch
-  const getBranchStats = () => {
-    const effectiveBranch = getEffectiveBranch();
-    
-    const branchData = {
-      'Main Branch': {
-        totalEmployees: 45,
-        presentToday: 42,
-        absentToday: 3,
-        openComplaints: 3,
-        pendingApprovals: 4,
-        monthlyTestAvg: 88
-      },
-      'Tech Center': {
-        totalEmployees: 32,
-        presentToday: 30,
-        absentToday: 2,
-        openComplaints: 1,
-        pendingApprovals: 3,
-        monthlyTestAvg: 92
-      },
-      'Downtown Branch': {
-        totalEmployees: 28,
-        presentToday: 26,
-        absentToday: 2,
-        openComplaints: 2,
-        pendingApprovals: 2,
-        monthlyTestAvg: 84
-      },
-      'West Branch': {
-        totalEmployees: 22,
-        presentToday: 20,
-        absentToday: 2,
-        openComplaints: 1,
-        pendingApprovals: 2,
-        monthlyTestAvg: 85
-      },
-      'East Branch': {
-        totalEmployees: 20,
-        presentToday: 16,
-        absentToday: 4,
-        openComplaints: 1,
-        pendingApprovals: 1,
-        monthlyTestAvg: 83
-      },
-      'All Branches': {
-        totalEmployees: 147,
-        presentToday: 134,
-        absentToday: 13,
-        openComplaints: 8,
-        pendingApprovals: 12,
-        monthlyTestAvg: 86
-      }
-    };
-    
-    return branchData[effectiveBranch] || branchData['All Branches'];
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  const hasFetchedRef = useRef(false);
+  const previousBranchRef = useRef(null);
+
+  // Get the current branch value
+  const currentBranch = getEffectiveBranch();
+
+  // Fetch admin dashboard stats
+  useEffect(() => {
+    // Only fetch if we haven't fetched yet OR if the branch has changed
+    if (!hasFetchedRef.current || previousBranchRef.current !== currentBranch) {
+      hasFetchedRef.current = true;
+      previousBranchRef.current = currentBranch;
+      fetchDashboardStats();
+    }
+  }, [currentBranch]);
+
+  const fetchDashboardStats = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await dashboardService.getAdminDashboardStats(currentBranch);
+      setStats(data);
+    } catch (err) {
+      console.error('Error fetching admin dashboard stats:', err);
+      setError(err.response?.data?.message || 'Failed to load dashboard statistics');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const stats = getBranchStats();
+  // Show loading state
+  if (loading) {
+    return (
+      <AdminLayout>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+          <CircularProgress />
+        </Box>
+      </AdminLayout>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <AdminLayout>
+        <Box sx={{ p: 3 }}>
+          <Alert severity="error" action={
+            <IconButton color="inherit" size="small" onClick={fetchDashboardStats}>
+              <TrendingUp />
+            </IconButton>
+          }>
+            {error}
+          </Alert>
+        </Box>
+      </AdminLayout>
+    );
+  }
+
+  // Show message if no stats
+  if (!stats) {
+    return (
+      <AdminLayout>
+        <Box sx={{ p: 3 }}>
+          <Alert severity="info">No dashboard data available</Alert>
+        </Box>
+      </AdminLayout>
+    );
+  }
 
   const quickAccessCards = [
     {
@@ -376,7 +392,7 @@ const AdminDashboard = () => {
       icon: <People sx={{ fontSize: 40, color: '#64B5F6' }} />,
       color: '#E3F2FD',
       path: '/admin/attendance',
-      count: `${stats.presentToday}/${stats.totalEmployees}`,
+      count: `${stats?.presentToday ?? 0}/${stats?.totalEmployees ?? 0}`,
     },
     {
       title: 'Skill Test Reports',
@@ -384,7 +400,7 @@ const AdminDashboard = () => {
       icon: <Assessment sx={{ fontSize: 40, color: '#81C784' }} />,
       color: '#E8F5E8',
       path: '/admin/skill-reports',
-      count: `${stats.monthlyTestAvg}% avg`,
+      count: `${stats?.monthlyTestAvg ?? 0}% avg`,
     },
     {
       title: 'Complaints Overview',
@@ -392,7 +408,7 @@ const AdminDashboard = () => {
       icon: <ReportProblem sx={{ fontSize: 40, color: '#FFB74D' }} />,
       color: '#FFF3E0',
       path: '/admin/complaints',
-      count: `${stats.openComplaints} open`,
+      count: `${stats?.openComplaints ?? 0} open`,
     },
     {
       title: 'Tech Issues & Approvals',
@@ -400,30 +416,29 @@ const AdminDashboard = () => {
       icon: <BugReport sx={{ fontSize: 40, color: '#F48FB1' }} />,
       color: '#FCE4EC',
       path: '/admin/tech-issues',
-      count: `${stats.pendingApprovals} pending`,
+      count: `${stats?.techIssuesPending ?? 0} pending`,
     },
   ];
 
   const analyticsCards = [
     {
       title: 'Present Today',
-      value: stats.presentToday,
-      total: stats.totalEmployees,
-      percentage: Math.round((stats.presentToday / stats.totalEmployees) * 100),
+      value: `${stats?.presentToday ?? 0}/${stats?.totalEmployees ?? 0}`,
+      change: `${stats?.totalEmployees ? Math.round((stats.presentToday / stats.totalEmployees) * 100) : 0}% attendance rate`,
       icon: <TrendingUp />,
       color: 'success',
     },
     {
       title: 'Open Issues',
-      value: stats.openComplaints + stats.pendingApprovals,
-      change: '+3 this week',
+      value: (stats?.openComplaints ?? 0) + (stats?.techIssuesPending ?? 0),
+      change: `${stats?.leaveRequestsPending ?? 0} pending approvals`,
       icon: <Warning />,
       color: 'warning',
     },
     {
       title: 'Monthly Tests',
-      value: stats.monthlyTestAvg + '%',
-      change: '+5% vs last month',
+      value: `${stats?.monthlyTestAvg ?? 0}%`,
+      change: `${stats?.attendanceRate ?? 0}% attendance`,
       icon: <Assignment />,
       color: 'primary',
     },

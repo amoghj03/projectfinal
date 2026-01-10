@@ -20,3 +20,10 @@ Admin
     { text: 'Tech Issues & Approvals', icon: <BugReport />, path: '/admin/tech-issues', permission: 'techIssues' },
     { text: 'Reports Download', icon: <FileDownload />, path: '/admin/reports', permission: 'reports' },
   ];
+{success: false, message: "Unauthorized access."}
+message
+: 
+"Unauthorized access."
+success
+: 
+false

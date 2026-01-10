@@ -32,6 +32,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Payslip> Payslips { get; set; } = null!;
     public DbSet<Notification> Notifications { get; set; } = null!;
     public DbSet<AuditLog> AuditLogs { get; set; } = null!;
+    public DbSet<Setting> Settings { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -104,6 +105,10 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<Payslip>()
             .HasIndex(p => new { p.EmployeeId, p.Month, p.Year })
+            .IsUnique();
+
+        modelBuilder.Entity<Setting>()
+            .HasIndex(s => new { s.TenantId, s.Key })
             .IsUnique();
 
         // Configure self-referencing relationships to prevent cascading delete issues
