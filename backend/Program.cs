@@ -25,6 +25,7 @@ builder.Services.AddScoped<DashboardService>();
 
 // Register admin services
 builder.Services.AddScoped<AdminDashboardService>();
+builder.Services.AddScoped<AdminEmployeeService>();
 
 // Configure CORS for frontend access
 builder.Services.AddCors(options =>

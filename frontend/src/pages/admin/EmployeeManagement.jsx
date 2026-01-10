@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -36,6 +36,7 @@ import {
   ListItemIcon,
   Divider,
   Alert,
+  CircularProgress,
 } from '@mui/material';
 import { useBranch } from '../../contexts/BranchContext';
 import {
@@ -63,6 +64,7 @@ import {
 } from '@mui/icons-material';
 import { AdminLayout } from './AdminDashboard';
 import { useNavigate } from 'react-router-dom';
+import adminEmployeeService from '../../services/adminEmployeeService';
 
 const EmployeeManagement = () => {
   const navigate = useNavigate();
@@ -78,8 +80,45 @@ const EmployeeManagement = () => {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [viewDialog, setViewDialog] = useState(false);
 
-  // Mock employee data
-  const [employees] = useState([
+  // API state management
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [totalCount, setTotalCount] = useState(0);
+
+  const hasFetchedRef = useRef(false);
+  const previousBranchRef = useRef(null);
+
+  // Get the current branch value
+  const currentBranch = getEffectiveBranch();
+
+  // Fetch employees from API
+  useEffect(() => {
+    // Only fetch if we haven't fetched yet OR if the branch has changed
+    if (!hasFetchedRef.current || previousBranchRef.current !== currentBranch) {
+      hasFetchedRef.current = true;
+      previousBranchRef.current = currentBranch;
+      fetchEmployees();
+    }
+  }, [currentBranch]);
+
+  const fetchEmployees = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await adminEmployeeService.getEmployees(currentBranch);
+      setEmployees(data.employees || []);
+      setTotalCount(data.totalCount || 0);
+    } catch (err) {
+      console.error('Error fetching employees:', err);
+      setError(err.response?.data?.message || 'Failed to load employees');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Mock employee data (fallback) - keeping for backward compatibility
+  const [mockEmployees] = useState([
     {
       employeeId: 'EMP001',
       fullName: 'John Doe',
@@ -233,15 +272,16 @@ const EmployeeManagement = () => {
       emp.fullName.toLowerCase().includes(filterName.toLowerCase());
     const matchesId = filterEmployeeId === '' || 
       emp.employeeId.toLowerCase().includes(filterEmployeeId.toLowerCase());
-    const matchesRole = filterRole === '' || emp.role === filterRole;
+    const matchesRole = filterRole === '' || (emp.roles && emp.roles.some(r => r === filterRole)) || emp.role === filterRole;
     const matchesDepartment = filterDepartment === '' || emp.department === filterDepartment;
     const matchesStatus = filterStatus === '' || emp.status === filterStatus;
     
-    // Branch filtering - Super admin sees all branches, regular admin sees only their branch
+    // Branch filtering - API already filters by branch, but keep this for client-side fallback
     const currentBranch = getEffectiveBranch();
+    const empBranch = emp.branchName || emp.branch;
     const matchesBranch = isSuperAdmin && currentBranch === 'All Branches' 
       ? true 
-      : emp.branch === currentBranch;
+      : empBranch === currentBranch;
 
     return matchesToggle && matchesName && matchesId && matchesRole && 
            matchesDepartment && matchesStatus && matchesBranch;
@@ -267,6 +307,31 @@ const EmployeeManagement = () => {
 
   return (
     <AdminLayout>
+      {/* Loading State */}
+      {loading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+          <CircularProgress />
+        </Box>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <Box sx={{ p: 3 }}>
+          <Alert 
+            severity="error" 
+            action={
+              <Button color="inherit" size="small" onClick={fetchEmployees}>
+                Retry
+              </Button>
+            }
+          >
+            {error}
+          </Alert>
+        </Box>
+      )}
+
+      {/* Main Content */}
+      {!loading && !error && (
       <Box>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
           <Box>
@@ -276,7 +341,7 @@ const EmployeeManagement = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
               <Business fontSize="small" color="primary" />
               <Typography variant="body2" color="text.secondary">
-                Viewing: {getEffectiveBranch()}
+                Viewing: {getEffectiveBranch()} ({totalCount} employees)
               </Typography>
               {!isSuperAdmin && (
                 <Chip 
@@ -297,117 +362,6 @@ const EmployeeManagement = () => {
             Add New Employee
           </Button>
         </Box>
-
-        {/* Statistics Cards */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={6} md={2}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Avatar sx={{ backgroundColor: 'primary.main', mr: 2 }}>
-                    <Person />
-                  </Avatar>
-                  <Box>
-                    <Typography variant="h6">{stats.total}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Total
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={2}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Avatar sx={{ backgroundColor: 'success.main', mr: 2 }}>
-                    <Person />
-                  </Avatar>
-                  <Box>
-                    <Typography variant="h6">{stats.active}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Active
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={2}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Avatar sx={{ backgroundColor: 'error.main', mr: 2 }}>
-                    <AdminPanelSettings />
-                  </Avatar>
-                  <Box>
-                    <Typography variant="h6">{stats.admins}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Admins
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={2}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Avatar sx={{ backgroundColor: 'info.main', mr: 2 }}>
-                    <ManageAccounts />
-                  </Avatar>
-                  <Box>
-                    <Typography variant="h6">{stats.managers}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Managers
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={2}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Avatar sx={{ backgroundColor: 'warning.main', mr: 2 }}>
-                    <Work />
-                  </Avatar>
-                  <Box>
-                    <Typography variant="h6">{stats.employees}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Staff
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={2}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Avatar sx={{ backgroundColor: 'grey.500', mr: 2 }}>
-                    <PersonOff />
-                  </Avatar>
-                  <Box>
-                    <Typography variant="h6">{stats.inactive}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Inactive
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
 
         {/* Active/Inactive Toggle */}
         <Card sx={{ mb: 3 }}>
@@ -533,15 +487,17 @@ const EmployeeManagement = () => {
                         <TableCell>{employee.phone}</TableCell>
                         <TableCell>
                           <Chip
-                            label={employee.role}
-                            color={getRoleColor(employee.role)}
+                            label={employee.role || (employee.roles && employee.roles.length > 0 ? employee.roles[0] : 'Employee')}
+                            color={getRoleColor(employee.role || (employee.roles && employee.roles.length > 0 ? employee.roles[0] : 'Employee'))}
                             size="small"
                           />
                         </TableCell>
                         <TableCell>
-                          {employee.assignedRoles && employee.assignedRoles.length > 0 ? (
+                          {((employee.assignedRoles && employee.assignedRoles.length > 0) || 
+                            (employee.roles && employee.roles.length > 0)) ? (
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                              {employee.assignedRoles.map((roleId) => {
+                              {/* Handle assignedRoles from mock data */}
+                              {employee.assignedRoles && employee.assignedRoles.map((roleId) => {
                                 const role = availableRoles.find((r) => r.id === roleId);
                                 return role ? (
                                   <Chip
@@ -553,14 +509,24 @@ const EmployeeManagement = () => {
                                   />
                                 ) : null;
                               })}
+                              {/* Handle roles from API data */}
+                              {employee.roles && employee.roles.map((roleName, index) => (
+                                <Chip
+                                  key={index}
+                                  label={roleName}
+                                  color="primary"
+                                  size="small"
+                                  icon={<Security fontSize="small" />}
+                                />
+                              ))}
                             </Box>
                           ) : (
                             <Chip label="No Admin Access" size="small" variant="outlined" />
                           )}
                         </TableCell>
                         <TableCell>{employee.department}</TableCell>
-                        <TableCell>₹{employee.salary ? employee.salary.toLocaleString() : 'N/A'}</TableCell>
-                        <TableCell>{employee.joinDate}</TableCell>
+                        <TableCell>₹{employee.salary ? Number(employee.salary).toLocaleString() : 'N/A'}</TableCell>
+                        <TableCell>{employee.joinDate ? new Date(employee.joinDate).toLocaleDateString() : 'N/A'}</TableCell>
                         <TableCell>
                           <Chip
                             label={employee.status}
@@ -681,7 +647,7 @@ const EmployeeManagement = () => {
                         <ListItemIcon><Business /></ListItemIcon>
                         <ListItemText 
                           primary="Branch" 
-                          secondary={selectedEmployee.branch} 
+                          secondary={selectedEmployee.branchName || selectedEmployee.branch || 'N/A'} 
                         />
                       </ListItem>
                       <ListItem>
@@ -728,9 +694,11 @@ const EmployeeManagement = () => {
                         Assigned Roles
                       </Box>
                     </Typography>
-                    {selectedEmployee.assignedRoles && selectedEmployee.assignedRoles.length > 0 ? (
+                    {((selectedEmployee.assignedRoles && selectedEmployee.assignedRoles.length > 0) || 
+                      (selectedEmployee.roles && selectedEmployee.roles.length > 0)) ? (
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                        {selectedEmployee.assignedRoles.map((roleId) => {
+                        {/* Handle assignedRoles from mock data */}
+                        {selectedEmployee.assignedRoles && selectedEmployee.assignedRoles.map((roleId) => {
                           const role = availableRoles.find((r) => r.id === roleId);
                           return role ? (
                             <Chip
@@ -742,6 +710,16 @@ const EmployeeManagement = () => {
                             />
                           ) : null;
                         })}
+                        {/* Handle roles from API data */}
+                        {selectedEmployee.roles && selectedEmployee.roles.map((roleName, index) => (
+                          <Chip
+                            key={index}
+                            label={roleName}
+                            color="primary"
+                            icon={<Security />}
+                            sx={{ fontWeight: 'bold' }}
+                          />
+                        ))}
                       </Box>
                     ) : (
                       <Alert severity="info">
@@ -769,6 +747,7 @@ const EmployeeManagement = () => {
           )}
         </Dialog>
       </Box>
+      )}
     </AdminLayout>
   );
 };
