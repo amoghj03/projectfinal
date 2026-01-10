@@ -119,7 +119,7 @@ const TechIssuesRegister = () => {
           description: issue.description,
           category: issue.category.toLowerCase(),
           impact: issue.impact.toLowerCase(),
-          status: issue.status.toLowerCase().replace(/\s+/g, '_').replace('approval_', ''),
+          status: issue.status.toLowerCase().replace(/\s+/g, '_'),
           submittedDate: new Date(issue.submittedDate).toISOString().split('T')[0],
           submittedBy: issue.submittedBy,
           lastUpdate: new Date(issue.lastUpdate).toISOString().split('T')[0],
@@ -177,11 +177,9 @@ const TechIssuesRegister = () => {
   ];
 
   const statuses = [
-    { value: 'open', label: 'Open', color: 'error' },
-    { value: 'pending', label: 'Pending Approval', color: 'warning' },
-    { value: 'in_progress', label: 'In Progress', color: 'warning' },
-    { value: 'resolved', label: 'Resolved', color: 'success' },
-    { value: 'closed', label: 'Closed', color: 'default' }
+    { value: 'open', label: 'Open', color: 'warning' },
+    { value: 'approval_pending', label: 'Approval Pending', color: 'info' },
+    { value: 'resolved', label: 'Resolved', color: 'success' }
   ];
 
   const handleSubmitIssue = async () => {
@@ -238,7 +236,7 @@ const TechIssuesRegister = () => {
   const issueStats = {
     total: techIssues.length,
     open: techIssues.filter(i => i.status === 'open').length,
-    inProgress: techIssues.filter(i => i.status === 'in_progress').length,
+    approvalPending: techIssues.filter(i => i.status === 'approval_pending').length,
     resolved: techIssues.filter(i => i.status === 'resolved').length,
     high: techIssues.filter(i => i.impact === 'high').length,
     medium: techIssues.filter(i => i.impact === 'medium').length,
@@ -352,9 +350,9 @@ const TechIssuesRegister = () => {
                     <Warning />
                   </Avatar>
                   <Box>
-                    <Typography variant="h6">{issueStats.inProgress}</Typography>
+                    <Typography variant="h6">{issueStats.open}</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      In Progress
+                      Open
                     </Typography>
                   </Box>
                 </Box>
@@ -417,9 +415,8 @@ const TechIssuesRegister = () => {
                   >
                     <MenuItem value="all">All</MenuItem>
                     <MenuItem value="open">Open</MenuItem>
-                    <MenuItem value="in_progress">In Progress</MenuItem>
+                    <MenuItem value="approval_pending">Approval Pending</MenuItem>
                     <MenuItem value="resolved">Resolved</MenuItem>
-                    <MenuItem value="closed">Closed</MenuItem>
                   </Select>
                 </FormControl>
               </Box>
@@ -560,17 +557,17 @@ const TechIssuesRegister = () => {
                                       </Grid>
                                     </Grid>
                                     
-                                    {/* Close Issue Button for Open/In Progress cases */}
-                                    {(issue.status === 'open' || issue.status === 'in_progress') && (
+                                    {/* Close Issue Button for Open status */}
+                                    {issue.status === 'open' && (
                                       <Box sx={{ mt: 3, pt: 2, borderTop: 1, borderColor: 'divider' }}>
                                         <Button
                                           variant="contained"
-                                          color="error"
-                                          startIcon={<Close />}
+                                          color="primary"
+                                          startIcon={<CheckCircle />}
                                           onClick={() => handleCloseIssue(issue)}
                                           size="small"
                                         >
-                                          Close Issue
+                                          Mark as Fixed (Request Approval)
                                         </Button>
                                       </Box>
                                     )}

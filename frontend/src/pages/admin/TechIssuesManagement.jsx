@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -35,6 +35,8 @@ import {
   ListItemText,
   ListItemIcon,
   Divider,
+  CircularProgress,
+  Snackbar,
 } from '@mui/material';
 import {
   FileDownload,
@@ -57,6 +59,7 @@ import { useBranch } from '../../contexts/BranchContext';
 import { AdminLayout } from './AdminDashboard';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import adminTechIssueService from '../../services/adminTechIssueService';
 
 const TechIssuesManagement = () => {
   const { getEffectiveBranch, isSuperAdmin } = useBranch();
@@ -70,106 +73,57 @@ const TechIssuesManagement = () => {
   const [approvalComment, setApprovalComment] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  
+  // API state
+  const [techIssuesData, setTechIssuesData] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [approvalAction, setApprovalAction] = useState('approve');
+  
+  const hasFetchedRef = useRef(false);
+  const previousBranchRef = useRef(null);
+  
+  const currentBranch = getEffectiveBranch();
 
-  // Mock tech issues data
-  const [techIssuesData, setTechIssuesData] = useState([
-    {
-      issueId: 'TECH001',
-      employeeId: 'EMP001',
-      employeeName: 'John Doe',
-      department: 'Customer Service',
-      branch: 'Main Branch',
-      title: 'Login system timeout error',
-      description: 'System automatically logs out users after 5 minutes of inactivity instead of the expected 30 minutes',
-      category: 'authentication',
-      impact: 'medium',
-      status: 'pending_approval',
-      submittedDate: '2024-11-20',
-      lastUpdate: '2024-11-21',
-      stepsToReproduce: '1. Login to system\n2. Leave inactive for 5 minutes\n3. Try to perform any action',
-      expectedBehavior: 'Session should remain active for 30 minutes',
-      actualBehavior: 'Session expires after 5 minutes',
-      employeeResolution: 'Updated session timeout configuration in server settings'
-    },
-    {
-      issueId: 'TECH002',
-      employeeId: 'EMP002',
-      employeeName: 'Jane Smith',
-      department: 'IT Support',
-      branch: 'Tech Center',
-      title: 'Database search malfunction',
-      description: 'Search function returns incorrect customer records when using partial name matches',
-      category: 'database',
-      impact: 'high',
-      status: 'open',
-      submittedDate: '2024-11-18',
-      lastUpdate: '2024-11-21',
-      stepsToReproduce: '1. Go to customer search\n2. Enter partial name\n3. Check results',
-      expectedBehavior: 'Should return all customers with matching names',
-      actualBehavior: 'Returns random customer records'
-    },
-    {
-      issueId: 'TECH003',
-      employeeId: 'EMP003',
-      employeeName: 'Mike Johnson',
-      department: 'Accounts',
-      branch: 'Downtown Branch',
-      title: 'Report generation performance issue',
-      description: 'Monthly reports take excessively long time to generate, often timing out',
-      category: 'performance',
-      impact: 'medium',
-      status: 'approved',
-      submittedDate: '2024-11-15',
-      lastUpdate: '2024-11-19',
-      employeeResolution: 'Optimized database queries and added indexing',
-      adminComment: 'Good work on optimizing the queries. Issue resolved effectively.',
-      approvedBy: 'Admin User',
-      approvedDate: '2024-11-19'
-    },
-    {
-      issueId: 'TECH004',
-      employeeId: 'EMP004',
-      employeeName: 'Sarah Wilson',
-      department: 'HR',
-      branch: 'Main Branch',
-      title: 'Email notification system failure',
-      description: 'Automated email notifications for leave approvals are not being sent to employees',
-      category: 'integration',
-      impact: 'high',
-      status: 'pending_approval',
-      submittedDate: '2024-11-16',
-      lastUpdate: '2024-11-20',
-      employeeResolution: 'Fixed SMTP configuration and updated email templates'
-    },
-    {
-      issueId: 'TECH005',
-      employeeId: 'EMP005',
-      employeeName: 'David Brown',
-      department: 'Customer Service',
-      branch: 'West Branch',
-      title: 'UI responsiveness on mobile',
-      description: 'Banking application interface is not responsive on mobile devices',
-      category: 'ui',
-      impact: 'low',
-      status: 'rejected',
-      submittedDate: '2024-11-10',
-      lastUpdate: '2024-11-12',
-      employeeResolution: 'Added CSS media queries for mobile responsiveness',
-      adminComment: 'The proposed solution is incomplete. Please implement proper responsive framework.',
-      rejectedBy: 'Admin User',
-      rejectedDate: '2024-11-12'
-    },
-  ]);
+  // Fetch data when component mounts or branch changes
+  useEffect(() => {
+    if (!hasFetchedRef.current || previousBranchRef.current !== currentBranch) {
+      hasFetchedRef.current = true;
+      previousBranchRef.current = currentBranch;
+      fetchData();
+    }
+  }, [currentBranch]);
 
-  const statuses = ['All', 'open', 'pending_approval', 'approved', 'rejected'];
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const [issuesData, statsData] = await Promise.all([
+        adminTechIssueService.getAllTechIssues(currentBranch),
+        adminTechIssueService.getTechIssueStats(currentBranch)
+      ]);
+      
+      setTechIssuesData(issuesData);
+      setStats(statsData);
+    } catch (err) {
+      console.error('Error fetching tech issues:', err);
+      setError(err.response?.data?.message || 'Failed to load tech issues data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const statuses = ['All', 'open', 'approval_pending', 'resolved'];
   const impacts = ['All', 'low', 'medium', 'high'];
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'open': return 'info';
-      case 'pending_approval': return 'warning';
-      case 'approved': return 'success';
-      case 'rejected': return 'error';
+      case 'open': return 'warning';
+      case 'approval_pending': return 'info';
+      case 'resolved': return 'success';
       default: return 'default';
     }
   };
@@ -194,9 +148,9 @@ const TechIssuesManagement = () => {
 
   const filteredData = techIssuesData.filter(issue => {
     const statusFilter = tabValue === 0 ? 
-      ['open', 'pending_approval'] : 
-      tabValue === 1 ? ['pending_approval'] : 
-      ['approved', 'rejected'];
+      ['open', 'approval_pending'] : 
+      tabValue === 1 ? ['approval_pending'] : 
+      ['resolved']; // Completed tab shows resolved issues
     
     const effectiveBranch = getEffectiveBranch();
     const branchMatch = isSuperAdmin || effectiveBranch === 'All Branches' || issue.branch === effectiveBranch;
@@ -220,30 +174,41 @@ const TechIssuesManagement = () => {
   const handleApprovalAction = (issue, action) => {
     setSelectedIssue(issue);
     setApprovalComment('');
+    setApprovalAction(action);
     setApprovalDialog(true);
   };
 
-  const handleApprovalSubmit = (action) => {
+  const handleApprovalSubmit = async (action) => {
     if (!selectedIssue) return;
 
-    const updatedIssues = techIssuesData.map(issue => {
-      if (issue.issueId === selectedIssue.issueId) {
-        return {
-          ...issue,
-          status: action === 'approve' ? 'approved' : 'rejected',
-          adminComment: approvalComment,
-          [`${action === 'approve' ? 'approved' : 'rejected'}By`]: 'Admin User',
-          [`${action === 'approve' ? 'approved' : 'rejected'}Date`]: new Date().toISOString().split('T')[0],
-          lastUpdate: new Date().toISOString().split('T')[0]
-        };
-      }
-      return issue;
-    });
+    console.log('handleApprovalSubmit called with action:', action);
+    console.log('Issue ID:', selectedIssue.id);
 
-    setTechIssuesData(updatedIssues);
-    setApprovalDialog(false);
-    setSelectedIssue(null);
-    setApprovalComment('');
+    try {
+      if (action === 'approve') {
+        console.log('Calling approveTechIssue API');
+        await adminTechIssueService.approveTechIssue(selectedIssue.id, approvalComment);
+        setSnackbar({ open: true, message: 'Tech issue approved successfully', severity: 'success' });
+      } else if (action === 'reject') {
+        console.log('Calling rejectTechIssue API');
+        await adminTechIssueService.rejectTechIssue(selectedIssue.id, approvalComment);
+        setSnackbar({ open: true, message: 'Tech issue rejected successfully', severity: 'success' });
+      }
+
+      // Refresh data
+      await fetchData();
+      
+      setApprovalDialog(false);
+      setSelectedIssue(null);
+      setApprovalComment('');
+    } catch (err) {
+      console.error('Error processing approval:', err);
+      setSnackbar({ 
+        open: true, 
+        message: err.response?.data?.error || err.response?.data?.message || 'Failed to process approval', 
+        severity: 'error' 
+      });
+    }
   };
 
   const handleExportExcel = () => {
@@ -252,13 +217,14 @@ const TechIssuesManagement = () => {
       'Employee ID': issue.employeeId,
       'Employee Name': issue.employeeName,
       'Department': issue.department,
+      'Branch': issue.branch,
       'Title': issue.title,
       'Description': issue.description,
       'Category': issue.category,
       'Impact': issue.impact,
       'Status': issue.status,
-      'Submitted Date': issue.submittedDate,
-      'Last Update': issue.lastUpdate,
+      'Submitted Date': new Date(issue.submittedDate).toLocaleDateString(),
+      'Last Update': new Date(issue.lastUpdate).toLocaleDateString(),
       'Employee Resolution': issue.employeeResolution || 'N/A',
       'Admin Comment': issue.adminComment || 'N/A'
     }));
@@ -272,6 +238,34 @@ const TechIssuesManagement = () => {
     saveAs(data, `tech_issues_report_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
+  // Show loading state
+  if (loading && !techIssuesData.length) {
+    return (
+      <AdminLayout>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+          <CircularProgress />
+        </Box>
+      </AdminLayout>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <AdminLayout>
+        <Box sx={{ p: 3 }}>
+          <Alert severity="error" action={
+            <Button color="inherit" size="small" onClick={fetchData}>
+              Retry
+            </Button>
+          }>
+            {error}
+          </Alert>
+        </Box>
+      </AdminLayout>
+    );
+  }
+
   // Calculate statistics from all branch-filtered data
   const allBranchFilteredData = techIssuesData.filter(issue => {
     const effectiveBranch = getEffectiveBranch();
@@ -279,12 +273,12 @@ const TechIssuesManagement = () => {
     return branchMatch;
   });
   
-  const stats = {
+  const displayStats = stats || {
     total: allBranchFilteredData.length,
     open: allBranchFilteredData.filter(i => i.status === 'open').length,
-    pendingApproval: allBranchFilteredData.filter(i => i.status === 'pending_approval').length,
-    approved: allBranchFilteredData.filter(i => i.status === 'approved').length,
-    rejected: allBranchFilteredData.filter(i => i.status === 'rejected').length,
+    pendingApproval: allBranchFilteredData.filter(i => i.status === 'approval_pending').length,
+    approved: allBranchFilteredData.filter(i => i.status === 'resolved').length,
+    rejected: 0, // No rejected status anymore
     highImpact: allBranchFilteredData.filter(i => i.impact === 'high').length
   };
 
@@ -337,7 +331,7 @@ const TechIssuesManagement = () => {
                     <BugReport />
                   </Avatar>
                   <Box>
-                    <Typography variant="h6">{stats.total}</Typography>
+                    <Typography variant="h6">{displayStats.total}</Typography>
                     <Typography variant="body2" color="text.secondary">
                       Total Issues
                     </Typography>
@@ -355,7 +349,7 @@ const TechIssuesManagement = () => {
                     <Pending />
                   </Avatar>
                   <Box>
-                    <Typography variant="h6">{stats.open}</Typography>
+                    <Typography variant="h6">{displayStats.open}</Typography>
                     <Typography variant="body2" color="text.secondary">
                       Open
                     </Typography>
@@ -373,7 +367,7 @@ const TechIssuesManagement = () => {
                     <HourglassEmpty />
                   </Avatar>
                   <Box>
-                    <Typography variant="h6">{stats.pendingApproval}</Typography>
+                    <Typography variant="h6">{displayStats.pendingApproval}</Typography>
                     <Typography variant="body2" color="text.secondary">
                       Pending Approval
                     </Typography>
@@ -391,9 +385,9 @@ const TechIssuesManagement = () => {
                     <CheckCircle />
                   </Avatar>
                   <Box>
-                    <Typography variant="h6">{stats.approved}</Typography>
+                    <Typography variant="h6">{displayStats.approved}</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Approved
+                      Resolved
                     </Typography>
                   </Box>
                 </Box>
@@ -409,7 +403,7 @@ const TechIssuesManagement = () => {
                     <Error />
                   </Avatar>
                   <Box>
-                    <Typography variant="h6">{stats.highImpact}</Typography>
+                    <Typography variant="h6">{displayStats.highImpact}</Typography>
                     <Typography variant="body2" color="text.secondary">
                       High Priority
                     </Typography>
@@ -427,7 +421,7 @@ const TechIssuesManagement = () => {
               <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)}>
                 <Tab label="All Issues" />
                 <Tab label="Pending Approval" />
-                <Tab label="Completed" />
+                <Tab label="Resolved" />
               </Tabs>
             </Box>
 
@@ -515,7 +509,9 @@ const TechIssuesManagement = () => {
                               size="small"
                             />
                           </TableCell>
-                          <TableCell>{issue.submittedDate}</TableCell>
+                          <TableCell>
+                            {new Date(issue.submittedDate).toLocaleDateString()}
+                          </TableCell>
                           <TableCell>
                             <Box sx={{ display: 'flex', gap: 1 }}>
                               <Tooltip title="View Details">
@@ -523,7 +519,7 @@ const TechIssuesManagement = () => {
                                   <Visibility />
                                 </IconButton>
                               </Tooltip>
-                              {issue.status === 'pending_approval' && (
+                              {issue.status === 'approval_pending' && (
                                 <>
                                   <Tooltip title="Approve">
                                     <IconButton 
@@ -574,7 +570,7 @@ const TechIssuesManagement = () => {
                   </TableHead>
                   <TableBody>
                     {filteredData
-                      .filter(issue => issue.status === 'pending_approval')
+                      .filter(issue => issue.status === 'approval_pending')
                       .map((issue) => (
                         <TableRow key={issue.issueId}>
                           <TableCell>{issue.issueId}</TableCell>
@@ -637,7 +633,7 @@ const TechIssuesManagement = () => {
                   </TableHead>
                   <TableBody>
                     {filteredData
-                      .filter(issue => ['approved', 'rejected'].includes(issue.status))
+                      .filter(issue => issue.status === 'resolved')
                       .map((issue) => (
                         <TableRow key={issue.issueId}>
                           <TableCell>{issue.issueId}</TableCell>
@@ -651,7 +647,11 @@ const TechIssuesManagement = () => {
                             />
                           </TableCell>
                           <TableCell>
-                            {issue.approvedDate || issue.rejectedDate}
+                            {issue.approvedDate 
+                              ? new Date(issue.approvedDate).toLocaleDateString() 
+                              : issue.rejectedDate 
+                                ? new Date(issue.rejectedDate).toLocaleDateString() 
+                                : 'N/A'}
                           </TableCell>
                           <TableCell>
                             <IconButton onClick={() => handleViewIssue(issue)} size="small">
@@ -708,7 +708,7 @@ const TechIssuesManagement = () => {
                       sx={{ ml: 1 }}
                     />
                   </Typography>
-                  <Typography><strong>Submitted:</strong> {selectedIssue.submittedDate}</Typography>
+                  <Typography><strong>Submitted:</strong> {new Date(selectedIssue.submittedDate).toLocaleDateString()}</Typography>
                   <Typography><strong>Employee:</strong> {selectedIssue.employeeName} ({selectedIssue.employeeId})</Typography>
                 </Grid>
                 <Grid item xs={12} md={6}>
@@ -791,6 +791,7 @@ const TechIssuesManagement = () => {
               onClick={() => handleApprovalSubmit('reject')} 
               color="error"
               startIcon={<ThumbDown />}
+              disabled={loading}
             >
               Reject
             </Button>
@@ -799,11 +800,28 @@ const TechIssuesManagement = () => {
               variant="contained"
               color="success"
               startIcon={<ThumbUp />}
+              disabled={loading}
             >
               Approve
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Snackbar for notifications */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <Alert 
+            onClose={() => setSnackbar({ ...snackbar, open: false })} 
+            severity={snackbar.severity}
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Box>
     </AdminLayout>
   );

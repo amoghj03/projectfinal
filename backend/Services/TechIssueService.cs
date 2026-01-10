@@ -28,7 +28,7 @@ namespace BankAPI.Services
                     Description = t.Description,
                     Category = t.Category,
                     Impact = t.Priority,
-                    Status = t.Status,
+                    Status = t.Status, // Use database status directly
                     SubmittedDate = t.CreatedAt,
                     SubmittedBy = t.Employee.FullName,
                     LastUpdate = t.UpdatedAt,
@@ -71,7 +71,7 @@ namespace BankAPI.Services
                 Title = request.Title,
                 Description = request.Description,
                 Priority = request.Impact,
-                Status = "Open",
+                Status = "Open", // One of 3 states: Open, Approval Pending, Resolved
                 RequiresApproval = requireApproval?.ToLower() == "true",
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -88,7 +88,7 @@ namespace BankAPI.Services
                 Description = techIssue.Description,
                 Category = techIssue.Category,
                 Impact = techIssue.Priority,
-                Status = techIssue.Status,
+                Status = techIssue.Status, // Use database status directly
                 SubmittedDate = techIssue.CreatedAt,
                 SubmittedBy = employee.FullName,
                 LastUpdate = techIssue.UpdatedAt,
@@ -112,11 +112,11 @@ namespace BankAPI.Services
             // Check if requires approval
             if (techIssue.RequiresApproval)
             {
-                techIssue.Status = "Approval Pending";
+                techIssue.Status = "Approval Pending"; // Waiting for admin approval
             }
             else
             {
-                techIssue.Status = "Closed";
+                techIssue.Status = "Resolved"; // Directly resolved
                 techIssue.ResolvedAt = DateTime.UtcNow;
             }
 
@@ -133,7 +133,7 @@ namespace BankAPI.Services
                 Description = techIssue.Description,
                 Category = techIssue.Category,
                 Impact = techIssue.Priority,
-                Status = techIssue.Status,
+                Status = techIssue.Status, // Use database status directly
                 SubmittedDate = techIssue.CreatedAt,
                 SubmittedBy = techIssue.Employee.FullName,
                 LastUpdate = techIssue.UpdatedAt,
