@@ -52,6 +52,8 @@ import adminComplaintService from '../../services/adminComplaintService';
 
 const ComplaintsOverview = () => {
   const { getEffectiveBranch, isSuperAdmin } = useBranch();
+  const effectiveBranch = getEffectiveBranch();
+  
   const [filterDate, setFilterDate] = useState('');
   const [filterEmployee, setFilterEmployee] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -75,9 +77,6 @@ const ComplaintsOverview = () => {
   const [actionDialog, setActionDialog] = useState({ open: false, type: '', complaintId: null });
   const [actionComment, setActionComment] = useState('');
   const [actionResolution, setActionResolution] = useState('');
-  
-  // Ref to prevent double API calls in StrictMode
-  const hasFetched = useRef(false);
 
   const categories = ['All', 'workplace', 'hr', 'it', 'management', 'training', 'policy', 'other'];
   const statuses = ['All', 'open', 'approval_pending', 'resolved'];
@@ -86,12 +85,11 @@ const ComplaintsOverview = () => {
     try {
       setLoading(true);
       setError('');
-      const branch = getEffectiveBranch();
       
       // Fetch complaints and stats in parallel
       const [complaintsResponse, statsResponse] = await Promise.all([
-        adminComplaintService.getAllComplaints(branch),
-        adminComplaintService.getComplaintStats(branch)
+        adminComplaintService.getAllComplaints(effectiveBranch),
+        adminComplaintService.getComplaintStats(effectiveBranch)
       ]);
 
       setComplaintsData(complaintsResponse);
@@ -106,13 +104,10 @@ const ComplaintsOverview = () => {
     }
   };
 
-  // Fetch complaints data from API
+  // Fetch complaints data from API when component mounts or branch changes
   useEffect(() => {
-    if (!hasFetched.current) {
-      hasFetched.current = true;
-      fetchComplaintsData();
-    }
-  }, []);
+    fetchComplaintsData();
+  }, [effectiveBranch]);
 
   const handleTakeAction = async () => {
     try {
@@ -289,7 +284,7 @@ const ComplaintsOverview = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
               <Business fontSize="small" color="primary" />
               <Typography variant="body2" color="text.secondary">
-                Viewing: {getEffectiveBranch()}
+                Viewing: {effectiveBranch}
               </Typography>
               {!isSuperAdmin && (
                 <Chip 

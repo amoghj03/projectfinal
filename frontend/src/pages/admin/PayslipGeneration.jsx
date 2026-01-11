@@ -43,6 +43,7 @@ import payslipService from '../../services/payslipService';
 const PayslipGeneration = () => {
   const { getEffectiveBranch, isSuperAdmin } = useBranch();
   const payslipRef = useRef();
+  const effectiveBranch = getEffectiveBranch();
   
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [payslipGenerated, setPayslipGenerated] = useState(false);
@@ -83,8 +84,7 @@ const PayslipGeneration = () => {
   const fetchEmployees = async () => {
     try {
       setLoading(true);
-      const currentBranch = getEffectiveBranch();
-      const branch = currentBranch === 'All Branches' ? null : currentBranch;
+      const branch = effectiveBranch === 'All Branches' ? null : effectiveBranch;
       const response = await payslipService.getEmployeesForPayslip(branch);
       
       if (response.success) {
@@ -100,11 +100,10 @@ const PayslipGeneration = () => {
     }
   };
 
-  // Fetch employees on mount
+  // Fetch employees on mount and when branch changes
   useEffect(() => {
     fetchEmployees();
-  }, []);
-
+  }, [effectiveBranch]);
   const handleEmployeeChange = (employeeId) => {
     setSelectedEmployee(employeeId);
     const employee = employees.find(emp => emp.id === employeeId);
@@ -371,7 +370,7 @@ const PayslipGeneration = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
             <Business fontSize="small" color="primary" />
             <Typography variant="body2" color="text.secondary">
-              Viewing: {getEffectiveBranch()}
+              Viewing: {effectiveBranch}
             </Typography>
             {!isSuperAdmin && (
               <Chip label="Branch Admin" size="small" color="primary" variant="outlined" />

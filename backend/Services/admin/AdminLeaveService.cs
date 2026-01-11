@@ -36,7 +36,7 @@ namespace BankAPI.Services.Admin
                 throw new UnauthorizedAccessException("Admin not found");
             }
 
-            var isSuperAdmin = admin.EmployeeRoles.Any(er => er.Role.Name == "Super Admin");
+            var isSuperAdmin = admin.EmployeeRoles.Any(er => er.Role.Name == "SuperAdmin");
 
             // Start with base query
             var query = _context.LeaveRequests
@@ -55,7 +55,7 @@ namespace BankAPI.Services.Admin
                 query = query.Where(lr => lr.Employee.Branch != null &&
                                          lr.Employee.Branch.Name == admin.Branch.Name);
             }
-            else if (!string.IsNullOrEmpty(branch))
+            else if (isSuperAdmin && !string.IsNullOrEmpty(branch) && branch.ToLower() != "all branches")
             {
                 query = query.Where(lr => lr.Employee.Branch != null &&
                                          lr.Employee.Branch.Name == branch);
@@ -129,7 +129,7 @@ namespace BankAPI.Services.Admin
                 throw new UnauthorizedAccessException("Admin not found");
             }
 
-            var isSuperAdmin = admin.EmployeeRoles.Any(er => er.Role.Name == "Super Admin");
+            var isSuperAdmin = admin.EmployeeRoles.Any(er => er.Role.Name == "SuperAdmin");
 
             var leaveRequest = await _context.LeaveRequests
                 .Include(lr => lr.Employee)
@@ -206,7 +206,7 @@ namespace BankAPI.Services.Admin
                 };
             }
 
-            var isSuperAdmin = admin.EmployeeRoles.Any(er => er.Role.Name == "Super Admin");
+            var isSuperAdmin = admin.EmployeeRoles.Any(er => er.Role.Name == "SuperAdmin");
 
             var leaveRequest = await _context.LeaveRequests
                 .Include(lr => lr.Employee)
@@ -233,9 +233,8 @@ namespace BankAPI.Services.Admin
                 };
             }
 
-            // Check if admin has access to this leave request's branch
-            if (!isSuperAdmin &&
-                leaveRequest.Employee.Branch?.Name != admin.Branch?.Name)
+            // Check if admin has access to this leave request's branch (skip for super admin)
+            if (!isSuperAdmin && leaveRequest.Employee.Branch?.Name != admin.Branch?.Name)
             {
                 return new AdminLeaveActionResponse
                 {
@@ -320,7 +319,7 @@ namespace BankAPI.Services.Admin
                 };
             }
 
-            var isSuperAdmin = admin.EmployeeRoles.Any(er => er.Role.Name == "Super Admin");
+            var isSuperAdmin = admin.EmployeeRoles.Any(er => er.Role.Name == "SuperAdmin");
 
             var leaveRequest = await _context.LeaveRequests
                 .Include(lr => lr.Employee)
@@ -346,9 +345,8 @@ namespace BankAPI.Services.Admin
                 };
             }
 
-            // Check if admin has access to this leave request's branch
-            if (!isSuperAdmin &&
-                leaveRequest.Employee.Branch?.Name != admin.Branch?.Name)
+            // Check if admin has access to this leave request's branch (skip for super admin)
+            if (!isSuperAdmin && leaveRequest.Employee.Branch?.Name != admin.Branch?.Name)
             {
                 return new AdminLeaveActionResponse
                 {
@@ -413,7 +411,7 @@ namespace BankAPI.Services.Admin
                 throw new UnauthorizedAccessException("Admin not found");
             }
 
-            var isSuperAdmin = admin.EmployeeRoles.Any(er => er.Role.Name == "Super Admin");
+            var isSuperAdmin = admin.EmployeeRoles.Any(er => er.Role.Name == "SuperAdmin");
 
             // Start with base query
             var query = _context.LeaveRequests
@@ -427,7 +425,7 @@ namespace BankAPI.Services.Admin
                 query = query.Where(lr => lr.Employee.Branch != null &&
                                          lr.Employee.Branch.Name == admin.Branch.Name);
             }
-            else if (!string.IsNullOrEmpty(branch))
+            else if (isSuperAdmin && !string.IsNullOrEmpty(branch) && branch.ToLower() != "all branches")
             {
                 query = query.Where(lr => lr.Employee.Branch != null &&
                                          lr.Employee.Branch.Name == branch);

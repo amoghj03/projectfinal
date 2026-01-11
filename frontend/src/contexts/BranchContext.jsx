@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import branchService from '../services/branchService';
 
 const BranchContext = createContext();
 
@@ -23,14 +24,55 @@ export const BranchProvider = ({ children }) => {
     return localStorage.getItem('adminBranch') || 'Main Branch';
   });
 
-  const branches = [
-    'All Branches',
-    'Main Branch',
-    'Downtown Branch',
-    'West Branch',
-    'East Branch',
-    'Tech Center'
-  ];
+  const [branches, setBranches] = useState(['All Branches']);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch branches based on tenant ID
+  useEffect(() => {
+    const fetchBranches = async () => {
+      const tenantId = localStorage.getItem('tenantId');
+      if (!tenantId) {
+        // Fallback to hardcoded branches if no tenantId (backward compatibility)
+        setBranches([
+          'All Branches',
+          'Main Branch',
+          'Downtown Branch',
+          'West Branch',
+          'East Branch',
+          'Tech Center'
+        ]);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const fetchedBranches = await branchService.getBranchesByTenant(parseInt(tenantId));
+        const branchNames = fetchedBranches.map(b => b.name);
+        
+        // Add "All Branches" option for super admins
+        const allBranches = adminRole === 'superadmin' 
+          ? ['All Branches', ...branchNames]
+          : branchNames;
+        
+        setBranches(allBranches);
+        
+        // Update selected branch if current selection is not in the list
+        if (!allBranches.includes(selectedBranch)) {
+          const newBranch = adminRole === 'superadmin' ? 'All Branches' : (branchNames[0] || adminBranch);
+          setSelectedBranch(newBranch);
+          localStorage.setItem('selectedBranch', newBranch);
+        }
+      } catch (error) {
+        console.error('Error fetching branches:', error);
+        // Fallback to admin branch on error
+        setBranches([adminBranch]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBranches();
+  }, [adminRole]); // Re-fetch when admin role changes
 
   const updateSelectedBranch = (branch) => {
     setSelectedBranch(branch);
@@ -60,6 +102,7 @@ export const BranchProvider = ({ children }) => {
     adminRole,
     adminBranch,
     branches,
+    loading,
     updateSelectedBranch,
     isSuperAdmin: adminRole === 'superadmin',
     getEffectiveBranch: () => {

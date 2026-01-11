@@ -81,7 +81,8 @@ const AttendanceManagement = () => {
   const [includeWeekends, setIncludeWeekends] = useState(false);
 
   const hasFetchedRef = useRef(false);
-  const previousBranchRef = useRef(null);
+  const previousDailyBranchRef = useRef(null);
+  const previousMonthlyBranchRef = useRef(null);
   const previousDateRef = useRef(null);
   const previousMonthRef = useRef(null);
 
@@ -89,9 +90,9 @@ const AttendanceManagement = () => {
 
   // Fetch daily attendance when date or branch changes
   useEffect(() => {
-    if (tabValue === 0 && (!hasFetchedRef.current || previousBranchRef.current !== currentBranch || previousDateRef.current !== filterDate)) {
+    if (tabValue === 0 && (!hasFetchedRef.current || previousDailyBranchRef.current !== currentBranch || previousDateRef.current !== filterDate)) {
       hasFetchedRef.current = true;
-      previousBranchRef.current = currentBranch;
+      previousDailyBranchRef.current = currentBranch;
       previousDateRef.current = filterDate;
       fetchDailyAttendance();
     }
@@ -99,8 +100,8 @@ const AttendanceManagement = () => {
 
   // Fetch monthly attendance when month or branch changes
   useEffect(() => {
-    if (tabValue === 1 && (previousBranchRef.current !== currentBranch || previousMonthRef.current !== filterMonth)) {
-      previousBranchRef.current = currentBranch;
+    if (tabValue === 1 && (previousMonthlyBranchRef.current !== currentBranch || previousMonthRef.current !== filterMonth)) {
+      previousMonthlyBranchRef.current = currentBranch;
       previousMonthRef.current = filterMonth;
       setEmployeeCalendarData({}); // Clear calendar cache when month/branch changes
       setExpandedRow(null); // Close expanded rows

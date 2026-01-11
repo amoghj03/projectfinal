@@ -75,10 +75,10 @@ public class AuthService : IAuthService
 
             // Determine admin access and roles
             var roles = employee.EmployeeRoles.Select(er => er.Role).ToList();
-            var hasAdminAccess = roles.Any(r => r.Name == "Admin" || r.Name == "HR");
+            var hasAdminAccess = roles.Any(r => r.Name == "Admin" || r.Name == "SuperAdmin");
             string? adminRole = null;
 
-            if (roles.Any(r => r.Name == "Admin"))
+            if (roles.Any(r => r.Name == "Admin" || r.Name == "SuperAdmin"))
             {
                 // Check if super admin (CEO) or regular admin
                 adminRole = employee.JobRole?.ToLower().Contains("ceo") == true ? "superadmin" : "admin";
@@ -135,7 +135,8 @@ public class AuthService : IAuthService
                     Role = roles.FirstOrDefault()?.Name ?? "Employee",
                     HasAdminAccess = hasAdminAccess,
                     AdminRole = adminRole,
-                    AdminPermissions = hasAdminAccess ? permissions : null
+                    AdminPermissions = hasAdminAccess ? permissions : null,
+                    TenantId = user.TenantId
                 }
             };
         }

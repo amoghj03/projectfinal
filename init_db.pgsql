@@ -390,7 +390,7 @@ INSERT INTO employees (tenant_id, user_id, employee_id, full_name, email, depart
 
 INSERT INTO roles (tenant_id, name, description, is_system) VALUES
 (1,'Admin','System Administrator',true),
-(1,'SUPER_ADMIN','Human Resources',true),
+(1,'SuperAdmin','Human Resources',true),
 (1,'Employee','Regular Employee',true);
 
 INSERT INTO permissions (name, display_name, description, category) VALUES

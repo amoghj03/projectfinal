@@ -50,6 +50,7 @@ class AuthService {
       const user = data.user;
       localStorage.setItem('employeeName', user.name);
       localStorage.setItem('employeeId', user.employeeId);
+      localStorage.setItem('tenantId', user.tenantId);
 
       // Store admin permissions if available
       if (user.adminPermissions) {

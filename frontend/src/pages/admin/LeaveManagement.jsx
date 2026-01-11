@@ -95,7 +95,7 @@ const LeaveManagement = () => {
       setError(null);
       
       const filters = {
-        branch: isSuperAdmin ? effectiveBranch : undefined,
+        branch: effectiveBranch,
       };
       
       const data = await adminLeaveService.getLeaveRequests(filters);
@@ -222,7 +222,7 @@ const LeaveManagement = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
             <Business fontSize="small" color="primary" />
             <Typography variant="body2" color="text.secondary">
-              {isSuperAdmin ? 'All Branches' : getEffectiveBranch()}
+              {effectiveBranch}
             </Typography>
           </Box>
           <Typography variant="h4" gutterBottom>
