@@ -29,6 +29,7 @@ builder.Services.AddScoped<AdminEmployeeService>();
 builder.Services.AddScoped<AdminTechIssueService>();
 builder.Services.AddScoped<AdminComplaintService>();
 builder.Services.AddScoped<AdminLeaveService>();
+builder.Services.AddScoped<AdminAttendanceService>();
 
 // Configure CORS for frontend access
 builder.Services.AddCors(options =>

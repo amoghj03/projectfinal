@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -31,6 +31,8 @@ import {
   Tabs,
   Tab,
   Autocomplete,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import { useBranch } from '../../contexts/BranchContext';
 import {
@@ -42,12 +44,14 @@ import {
   CalendarMonth,
   Person,
   Business,
-    ExpandMore,
+  ExpandMore,
   ExpandLess,
+  Refresh,
 } from '@mui/icons-material';
 import { AdminLayout } from './AdminDashboard';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import attendanceService from '../../services/attendanceService';
 
 const TabPanel = ({ children, value, index }) => (
   <div role="tabpanel" hidden={value !== index}>
@@ -68,264 +72,110 @@ const AttendanceManagement = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [expandedRow, setExpandedRow] = useState(null);
 
-  // Mock attendance data
-  const [attendanceData] = useState([
-    {
-      employeeId: 'EMP001',
-      employeeName: 'John Doe',
-      department: 'Customer Service',
-      branch: 'Main Branch',
-      status: 'present',
-      markedTime: '09:15 AM',
-      workSummary: 'Processed 15 loan applications, handled 25 customer calls, resolved 3 complaints',
-      totalHours: 8,
-      selfScore: 8,
-      date: '2025-11-22'
-    },
-    {
-      employeeId: 'EMP002',
-      employeeName: 'Jane Smith',
-      department: 'IT Support',
-      branch: 'Tech Center',
-      status: 'late',
-      markedTime: '09:45 AM',
-      workSummary: 'Fixed server issues, updated 10 workstations, resolved network connectivity problems',
-      totalHours: 7.5,
-      selfScore: 7,
-      date: '2025-11-22'
-    },
-    {
-      employeeId: 'EMP003',
-      employeeName: 'Mike Johnson',
-      department: 'Accounts',
-      branch: 'Downtown Branch',
-      status: 'absent',
-      markedTime: '-',
-      workSummary: '-',
-      totalHours: 0,
-      selfScore: 0,
-      date: '2025-11-22'
-    },
-    {
-      employeeId: 'EMP004',
-      employeeName: 'Sarah Wilson',
-      department: 'HR',
-      branch: 'Main Branch',
-      status: 'present',
-      markedTime: '08:55 AM',
-      workSummary: 'Conducted 3 interviews, updated employee policies, processed 5 onboarding documents',
-      totalHours: 8.5,
-      selfScore: 9,
-      date: '2025-11-22'
-    },
-    {
-      employeeId: 'EMP005',
-      employeeName: 'David Brown',
-      department: 'Customer Service',
-      branch: 'Main Branch',
-      status: 'present',
-      markedTime: '09:10 AM',
-      workSummary: 'Handled customer inquiries, processed account openings, completed training module',
-      totalHours: 8,
-      selfScore: 8,
-      date: '2025-11-22'
-    },
-    {
-      employeeId: 'EMP006',
-      employeeName: 'Emily Davis',
-      department: 'IT Support',
-      branch: 'Tech Center',
-      status: 'present',
-      markedTime: '08:50 AM',
-      workSummary: 'Database maintenance, security updates, user account management, system backups',
-      totalHours: 8.2,
-      selfScore: 9,
-      date: '2025-11-22'
-    },
-    {
-      employeeId: 'EMP007',
-      employeeName: 'Robert Miller',
-      department: 'Accounts',
-      branch: 'Downtown Branch',
-      status: 'present',
-      markedTime: '09:05 AM',
-      workSummary: 'Reconciled 50 accounts, prepared monthly reports, audited transaction records',
-      totalHours: 7.8,
-      selfScore: 8,
-      date: '2024-11-22'
-    },
-    {
-      employeeId: 'EMP008',
-      employeeName: 'Lisa Garcia',
-      department: 'HR',
-      branch: 'West Branch',
-      status: 'late',
-      markedTime: '09:35 AM',
-      workSummary: 'Employee relations meeting, policy updates, performance reviews scheduling',
-      totalHours: 7.3,
-      selfScore: 7,
-      date: '2024-11-22'
-    },
-    {
-      employeeId: 'EMP009',
-      employeeName: 'Thomas Anderson',
-      department: 'Customer Service',
-      branch: 'East Branch',
-      status: 'present',
-      markedTime: '08:45 AM',
-      workSummary: 'VIP customer service, complaint escalations, cross-selling activities, team training',
-      totalHours: 8.7,
-      selfScore: 9,
-      date: '2024-11-22'
-    },
-    {
-      employeeId: 'EMP010',
-      employeeName: 'Maria Rodriguez',
-      department: 'Management',
-      branch: 'Main Branch',
-      status: 'present',
-      markedTime: '08:30 AM',
-      workSummary: 'Team meetings, strategic planning, budget reviews, performance analysis',
-      totalHours: 9,
-      selfScore: 9,
-      date: '2024-11-22'
-    },
-    {
-      employeeId: 'EMP011',
-      employeeName: 'James Wilson',
-      department: 'IT Support',
-      status: 'absent',
-      markedTime: '-',
-      workSummary: '-',
-      totalHours: 0,
-      selfScore: 0,
-      date: '2024-11-22'
-    },
-    {
-      employeeId: 'EMP012',
-      employeeName: 'Jennifer Lee',
-      department: 'Accounts',
-      status: 'present',
-      markedTime: '09:20 AM',
-      workSummary: 'Financial reporting, budget analysis, vendor payments processing, compliance checks',
-      totalHours: 8.1,
-      selfScore: 8,
-      date: '2024-11-22'
-    },
-    {
-      employeeId: 'EMP013',
-      employeeName: 'Michael Chen',
-      department: 'Customer Service',
-      status: 'late',
-      markedTime: '09:50 AM',
-      workSummary: 'Customer onboarding, product demonstrations, sales support, documentation updates',
-      totalHours: 7.2,
-      selfScore: 6,
-      date: '2024-11-22'
-    },
-    {
-      employeeId: 'EMP014',
-      employeeName: 'Amanda Taylor',
-      department: 'HR',
-      status: 'present',
-      markedTime: '08:40 AM',
-      workSummary: 'Recruitment activities, employee benefits administration, training coordination',
-      totalHours: 8.3,
-      selfScore: 8,
-      date: '2024-11-22'
-    },
-    {
-      employeeId: 'EMP015',
-      employeeName: 'Daniel White',
-      department: 'Management',
-      branch: 'Main Branch',
-      status: 'present',
-      markedTime: '08:25 AM',
-      workSummary: 'Department coordination, client meetings, project oversight, quality assurance reviews',
-      totalHours: 9.2,
-      selfScore: 9,
-      date: '2024-11-22'
-    },
-  ]);
+  // API state management
+  const [dailyAttendanceData, setDailyAttendanceData] = useState([]);
+  const [monthlyAttendanceData, setMonthlyAttendanceData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [employeeCalendarData, setEmployeeCalendarData] = useState({});
+  const [includeWeekends, setIncludeWeekends] = useState(false);
 
-  // Monthly attendance summary data
-  const [monthlyAttendanceData] = useState([
-    {
-      employeeId: 'EMP001',
-      employeeName: 'John Doe',
-      department: 'Customer Service',
-      branch: 'Main Branch',
-      totalDays: 22,
-      presentDays: 20,
-      lateDays: 2,
-      absentDays: 0,
-      avgHours: 8.2,
-      avgScore: 8.1,
-      attendancePercentage: 90.9
-    },
-    {
-      employeeId: 'EMP002',
-      employeeName: 'Jane Smith',
-      department: 'IT Support',
-      branch: 'Tech Center',
-      totalDays: 22,
-      presentDays: 19,
-      lateDays: 1,
-      absentDays: 2,
-      avgHours: 7.8,
-      avgScore: 7.5,
-      attendancePercentage: 86.4
-    },
-    {
-      employeeId: 'EMP003',
-      employeeName: 'Mike Johnson',
-      department: 'Accounts',
-      branch: 'Downtown Branch',
-      totalDays: 22,
-      presentDays: 18,
-      lateDays: 3,
-      absentDays: 1,
-      avgHours: 7.9,
-      avgScore: 7.2,
-      attendancePercentage: 81.8
-    },
-    {
-      employeeId: 'EMP004',
-      employeeName: 'Sarah Wilson',
-      department: 'HR',
-      branch: 'Main Branch',
-      totalDays: 22,
-      presentDays: 21,
-      lateDays: 1,
-      absentDays: 0,
-      avgHours: 8.5,
-      avgScore: 8.8,
-      attendancePercentage: 95.5
-    },
-    {
-      employeeId: 'EMP005',
-      employeeName: 'David Brown',
-      department: 'Customer Service',
-      branch: 'Main Branch',
-      totalDays: 22,
-      presentDays: 17,
-      lateDays: 2,
-      absentDays: 3,
-      avgHours: 7.3,
-      avgScore: 6.9,
-      attendancePercentage: 77.3
+  const hasFetchedRef = useRef(false);
+  const previousBranchRef = useRef(null);
+  const previousDateRef = useRef(null);
+  const previousMonthRef = useRef(null);
+
+  const currentBranch = getEffectiveBranch();
+
+  // Fetch daily attendance when date or branch changes
+  useEffect(() => {
+    if (tabValue === 0 && (!hasFetchedRef.current || previousBranchRef.current !== currentBranch || previousDateRef.current !== filterDate)) {
+      hasFetchedRef.current = true;
+      previousBranchRef.current = currentBranch;
+      previousDateRef.current = filterDate;
+      fetchDailyAttendance();
     }
-  ]);
+  }, [currentBranch, filterDate, tabValue]);
 
-  const employees = [
-    'John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson', 'David Brown',
-    'Emily Davis', 'Robert Miller', 'Lisa Garcia', 'Thomas Anderson', 'Maria Rodriguez',
-    'James Wilson', 'Jennifer Lee', 'Michael Chen', 'Amanda Taylor', 'Daniel White'
-  ];
-  const departments = ['All', 'Customer Service', 'IT Support', 'Accounts', 'HR', 'Management'];
+  // Fetch monthly attendance when month or branch changes
+  useEffect(() => {
+    if (tabValue === 1 && (previousBranchRef.current !== currentBranch || previousMonthRef.current !== filterMonth)) {
+      previousBranchRef.current = currentBranch;
+      previousMonthRef.current = filterMonth;
+      setEmployeeCalendarData({}); // Clear calendar cache when month/branch changes
+      setExpandedRow(null); // Close expanded rows
+      fetchMonthlyAttendance();
+    }
+  }, [currentBranch, filterMonth, tabValue]);
+
+  const fetchDailyAttendance = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const params = {
+        date: filterDate,
+      };
+
+      // Add branch filter only if not "All Branches"
+      if (currentBranch && currentBranch !== 'All Branches') {
+        params.branch = currentBranch;
+      }
+
+      const response = await attendanceService.getDailyAttendance(params);
+      
+      if (response.success) {
+        setDailyAttendanceData(response.data || []);
+      } else {
+        setError('Failed to load daily attendance data');
+      }
+    } catch (err) {
+      console.error('Error fetching daily attendance:', err);
+      setError(err.response?.data?.message || 'Failed to load daily attendance data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchMonthlyAttendance = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const params = {
+        month: filterMonth,
+      };
+
+      // Add branch filter only if not "All Branches"
+      if (currentBranch && currentBranch !== 'All Branches') {
+        params.branch = currentBranch;
+      }
+
+      const response = await attendanceService.getMonthlyAttendance(params);
+      
+      if (response.success) {
+        setMonthlyAttendanceData(response.data || []);
+        setIncludeWeekends(response.includeWeekends || false);
+      } else {
+        setError('Failed to load monthly attendance data');
+      }
+    } catch (err) {
+      console.error('Error fetching monthly attendance:', err);
+      setError(err.response?.data?.message || 'Failed to load monthly attendance data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Extract unique departments from data
+  const departments = ['All', ...new Set(
+    (tabValue === 0 ? dailyAttendanceData : monthlyAttendanceData)
+      .map(emp => emp.department)
+      .filter(Boolean)
+  )];
 
   const getStatusColor = (status) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case 'present': return 'success';
       case 'late': return 'warning';
       case 'absent': return 'error';
@@ -334,39 +184,26 @@ const AttendanceManagement = () => {
   };
 
   const getStatusLabel = (status) => {
-    switch (status) {
-      case 'present': return 'Present';
-      case 'late': return 'Late';
-      case 'absent': return 'Absent';
-      default: return status;
-    }
+    if (!status) return 'N/A';
+    return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
   };
 
-  const filteredDailyData = attendanceData.filter(emp => {
-    const matchesDate = !filterDate || emp.date === filterDate;
-    const matchesEmployee = !filterEmployee || emp.employeeName.toLowerCase().includes(filterEmployee.toLowerCase()) || emp.employeeId.toLowerCase().includes(filterEmployee.toLowerCase());
+  const filteredDailyData = dailyAttendanceData.filter(emp => {
+    const matchesEmployee = !filterEmployee || 
+      emp.employeeName?.toLowerCase().includes(filterEmployee.toLowerCase()) || 
+      emp.employeeId?.toLowerCase().includes(filterEmployee.toLowerCase());
     const matchesDepartment = !filterDepartment || filterDepartment === 'All' || emp.department === filterDepartment;
     
-    // Branch filtering - Super admin sees all branches, regular admin sees only their branch
-    const currentBranch = getEffectiveBranch();
-    const matchesBranch = isSuperAdmin && currentBranch === 'All Branches' 
-      ? true 
-      : emp.branch === currentBranch;
-    
-    return matchesDate && matchesEmployee && matchesDepartment && matchesBranch;
+    return matchesEmployee && matchesDepartment;
   });
 
   const filteredMonthlyData = monthlyAttendanceData.filter(emp => {
-    const matchesEmployee = !filterEmployee || emp.employeeName.toLowerCase().includes(filterEmployee.toLowerCase()) || emp.employeeId.toLowerCase().includes(filterEmployee.toLowerCase());
+    const matchesEmployee = !filterEmployee || 
+      emp.employeeName?.toLowerCase().includes(filterEmployee.toLowerCase()) || 
+      emp.employeeId?.toLowerCase().includes(filterEmployee.toLowerCase());
     const matchesDepartment = !filterDepartment || filterDepartment === 'All' || emp.department === filterDepartment;
     
-    // Branch filtering - Super admin sees all branches, regular admin sees only their branch
-    const currentBranch = getEffectiveBranch();
-    const matchesBranch = isSuperAdmin && currentBranch === 'All Branches' 
-      ? true 
-      : emp.branch === currentBranch;
-    
-    return matchesEmployee && matchesDepartment && matchesBranch;
+    return matchesEmployee && matchesDepartment;
   });
 
   const handleViewDetails = (employee) => {
@@ -381,11 +218,11 @@ const AttendanceManagement = () => {
         'Employee ID': emp.employeeId,
         'Employee Name': emp.employeeName,
         'Department': emp.department,
+        'Branch': emp.branch || 'N/A',
         'Status': getStatusLabel(emp.status),
-        'Marked Time': emp.markedTime,
-        'Work Summary': emp.workSummary,
-        'Total Hours': emp.totalHours,
-        'Self Score': emp.selfScore,
+        'Check In': emp.checkInTime || 'N/A',
+        'Check Out': emp.checkOutTime || 'N/A',
+        'Work Hours': emp.workHours ? `${emp.workHours}h` : 'N/A',
         'Date': emp.date
       }));
 
@@ -402,13 +239,13 @@ const AttendanceManagement = () => {
         'Employee ID': emp.employeeId,
         'Employee Name': emp.employeeName,
         'Department': emp.department,
+        'Branch': emp.branch || 'N/A',
         'Total Days': emp.totalDays,
         'Present Days': emp.presentDays,
         'Late Days': emp.lateDays,
         'Absent Days': emp.absentDays,
         'Attendance %': emp.attendancePercentage + '%',
-        'Avg Hours': emp.avgHours,
-        'Avg Score': emp.avgScore
+        'Avg Hours': emp.avgHours + 'h'
       }));
 
       const ws = XLSX.utils.json_to_sheet(exportData);
@@ -424,11 +261,12 @@ const AttendanceManagement = () => {
   // Calculate daily statistics
   const dailyStats = {
     total: filteredDailyData.length,
-    present: filteredDailyData.filter(emp => emp.status === 'present').length,
-    late: filteredDailyData.filter(emp => emp.status === 'late').length,
-    absent: filteredDailyData.filter(emp => emp.status === 'absent').length,
-    avgHours: filteredDailyData.length > 0 ? (filteredDailyData.reduce((acc, emp) => acc + emp.totalHours, 0) / filteredDailyData.length).toFixed(1) : 0,
-    avgScore: filteredDailyData.filter(emp => emp.selfScore > 0).length > 0 ? (filteredDailyData.filter(emp => emp.selfScore > 0).reduce((acc, emp) => acc + emp.selfScore, 0) / filteredDailyData.filter(emp => emp.selfScore > 0).length).toFixed(1) : 0
+    present: filteredDailyData.filter(emp => emp.status?.toLowerCase() === 'present').length,
+    late: filteredDailyData.filter(emp => emp.status?.toLowerCase() === 'late').length,
+    absent: filteredDailyData.filter(emp => emp.status?.toLowerCase() === 'absent').length,
+    avgHours: filteredDailyData.length > 0 && filteredDailyData.some(emp => emp.workHours)
+      ? (filteredDailyData.reduce((acc, emp) => acc + (emp.workHours || 0), 0) / filteredDailyData.filter(emp => emp.workHours).length).toFixed(1) 
+      : '0'
   };
 
   // Calculate monthly statistics
@@ -437,50 +275,114 @@ const AttendanceManagement = () => {
     avgAttendance: filteredMonthlyData.length > 0 ? (filteredMonthlyData.reduce((acc, emp) => acc + emp.attendancePercentage, 0) / filteredMonthlyData.length).toFixed(1) : 0,
     totalPresent: filteredMonthlyData.reduce((acc, emp) => acc + emp.presentDays, 0),
     totalAbsent: filteredMonthlyData.reduce((acc, emp) => acc + emp.absentDays, 0),
-    avgHours: filteredMonthlyData.length > 0 ? (filteredMonthlyData.reduce((acc, emp) => acc + emp.avgHours, 0) / filteredMonthlyData.length).toFixed(1) : 0,
-    avgScore: filteredMonthlyData.length > 0 ? (filteredMonthlyData.reduce((acc, emp) => acc + emp.avgScore, 0) / filteredMonthlyData.length).toFixed(1) : 0
+    avgHours: filteredMonthlyData.length > 0 ? (filteredMonthlyData.reduce((acc, emp) => acc + emp.avgHours, 0) / filteredMonthlyData.length).toFixed(1) : 0
   };
 
   // Generate daily attendance data for a specific employee and month
-  const generateMonthlyCalendar = (employeeId) => {
-    const [year, month] = filterMonth.split('-').map(Number);
-    const daysInMonth = new Date(year, month, 0).getDate();
-    const attendanceData = [];
-
-    // Generate random attendance pattern for demo
-    for (let day = 1; day <= daysInMonth; day++) {
-      const random = Math.random();
-      let status = 'present';
-      
-      // Weekend detection (assuming Saturday=6, Sunday=0)
-      const date = new Date(year, month - 1, day);
-      const dayOfWeek = date.getDay();
-      
-      if (dayOfWeek === 0 || dayOfWeek === 6) {
-        status = 'weekend';
-      } else {
-        if (random < 0.05) {
-          status = 'absent';
-        } else if (random < 0.15) {
-          status = 'late';
-        } else {
-          status = 'present';
-        }
-      }
-
-      attendanceData.push({
-        day,
-        date: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
-        status,
-        dayOfWeek
-      });
+  const generateMonthlyCalendar = async (employeeId) => {
+    // Check if we already have the data cached
+    if (employeeCalendarData[employeeId]) {
+      return employeeCalendarData[employeeId];
     }
 
-    return attendanceData;
+    try {
+      // Fetch employee attendance details for the month
+      const [year, month] = filterMonth.split('-').map(Number);
+      const daysInMonth = new Date(year, month, 0).getDate();
+      
+      // Fetch attendance data from API
+      const response = await attendanceService.getEmployeeAttendanceDetails(employeeId, daysInMonth + 5);
+      
+      if (!response.success) {
+        console.error('Failed to fetch employee attendance details');
+        return [];
+      }
+
+      const attendances = response.data.Attendances || response.data.attendances || [];
+      
+      // Create a map of dates to attendance records
+      const attendanceMap = {};
+      attendances.forEach(att => {
+        attendanceMap[att.Date || att.date] = att;
+      });
+
+      const attendanceData = [];
+      
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const date = new Date(year, month - 1, day);
+        const dayOfWeek = date.getDay();
+        
+        let status = 'absent';
+        
+        // First check if there's actual attendance data for this date
+        const attendance = attendanceMap[dateStr];
+        
+        if (attendance) {
+          // Determine status based on check-in time
+          const checkInTime = attendance.CheckInTime || attendance.checkInTime;
+          if (checkInTime) {
+            // Parse time to determine if late
+            const timeParts = checkInTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
+            if (timeParts) {
+              let hours = parseInt(timeParts[1]);
+              const minutes = parseInt(timeParts[2]);
+              const period = timeParts[3].toUpperCase();
+              
+              if (period === 'PM' && hours !== 12) hours += 12;
+              if (period === 'AM' && hours === 12) hours = 0;
+              
+              const checkInMinutes = hours * 60 + minutes;
+              const standardTime = 9 * 60; // 9:00 AM
+              const lateThreshold = standardTime + 15; // 9:15 AM
+              
+              if (checkInMinutes > lateThreshold) {
+                status = 'late';
+              } else {
+                status = 'present';
+              }
+            } else {
+              status = 'present';
+            }
+          }
+        } else {
+          // Only mark as weekend if there's no attendance data and weekends are not included
+          if (!includeWeekends && (dayOfWeek === 0 || dayOfWeek === 6)) {
+            status = 'weekend';
+          }
+        }
+
+        attendanceData.push({
+          day,
+          date: dateStr,
+          status,
+          dayOfWeek
+        });
+      }
+
+      // Cache the data
+      setEmployeeCalendarData(prev => ({
+        ...prev,
+        [employeeId]: attendanceData
+      }));
+
+      return attendanceData;
+    } catch (error) {
+      console.error('Error generating monthly calendar:', error);
+      return [];
+    }
   };
 
-  const handleToggleExpand = (employeeId) => {
-    setExpandedRow(expandedRow === employeeId ? null : employeeId);
+  const handleToggleExpand = async (employeeId) => {
+    if (expandedRow === employeeId) {
+      setExpandedRow(null);
+    } else {
+      setExpandedRow(employeeId);
+      // Pre-fetch calendar data when expanding
+      if (!employeeCalendarData[employeeId]) {
+        await generateMonthlyCalendar(employeeId);
+      }
+    }
   };
 
   const getDayColor = (status) => {
@@ -492,6 +394,33 @@ const AttendanceManagement = () => {
       default: return '#fff';
     }
   };
+
+  const handleRefresh = () => {
+    if (tabValue === 0) {
+      fetchDailyAttendance();
+    } else {
+      fetchMonthlyAttendance();
+    }
+  };
+
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+    setPage(0); // Reset pagination
+    setExpandedRow(null); // Close any expanded rows
+    setEmployeeCalendarData({}); // Clear calendar cache when switching tabs
+    // useEffect will handle fetching when tab changes
+  };
+
+  // Show loading state
+  if (loading && (dailyAttendanceData.length === 0 && monthlyAttendanceData.length === 0)) {
+    return (
+      <AdminLayout>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+          <CircularProgress />
+        </Box>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -516,20 +445,53 @@ const AttendanceManagement = () => {
               )}
             </Box>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<FileDownload />}
-            onClick={handleExportExcel}
-            sx={{ background: 'linear-gradient(135deg, #64B5F6, #42A5F5)' }}
-          >
-            Download Excel
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              variant="outlined"
+              startIcon={<Refresh />}
+              onClick={handleRefresh}
+              disabled={loading}
+            >
+              Refresh
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<FileDownload />}
+              onClick={handleExportExcel}
+              sx={{ background: 'linear-gradient(135deg, #64B5F6, #42A5F5)' }}
+              disabled={loading || (tabValue === 0 ? filteredDailyData.length === 0 : filteredMonthlyData.length === 0)}
+            >
+              Download Excel
+            </Button>
+          </Box>
         </Box>
+
+        {/* Error Alert */}
+        {error && (
+          <Alert 
+            severity="error" 
+            sx={{ mb: 3 }}
+            action={
+              <IconButton color="inherit" size="small" onClick={handleRefresh}>
+                <Refresh />
+              </IconButton>
+            }
+          >
+            {error}
+          </Alert>
+        )}
+
+        {/* Loading Indicator */}
+        {loading && (
+          <Box sx={{ mb: 2 }}>
+            <LinearProgress />
+          </Box>
+        )}
 
         {/* Tabs */}
         <Card sx={{ mb: 4 }}>
           <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)}>
+            <Tabs value={tabValue} onChange={handleTabChange}>
               <Tab label="Daily Attendance Tracker" />
               <Tab label="Monthly Attendance Tracker" />
             </Tabs>
@@ -539,7 +501,7 @@ const AttendanceManagement = () => {
         <TabPanel value={tabValue} index={0}>
           {/* Daily Statistics Cards */}
           <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={4}>
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -557,7 +519,7 @@ const AttendanceManagement = () => {
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={4}>
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -575,35 +537,17 @@ const AttendanceManagement = () => {
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={4}>
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Avatar sx={{ backgroundColor: 'warning.main', mr: 2 }}>
-                    <AccessTime />
-                  </Avatar>
-                  <Box>
-                    <Typography variant="h6">{dailyStats.avgHours}h</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Avg Work Hours
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Avatar sx={{ backgroundColor: 'info.main', mr: 2 }}>
+                  <Avatar sx={{ backgroundColor: 'error.main', mr: 2 }}>
                     <CalendarMonth />
                   </Avatar>
                   <Box>
-                    <Typography variant="h6">{dailyStats.avgScore}/10</Typography>
+                    <Typography variant="h6">{dailyStats.late + dailyStats.absent}</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Avg Self Score
+                      Late + Absent
                     </Typography>
                   </Box>
                 </Box>
@@ -660,11 +604,11 @@ const AttendanceManagement = () => {
                     <TableCell>Employee ID</TableCell>
                     <TableCell>Employee Name</TableCell>
                     <TableCell>Department</TableCell>
+                    <TableCell>Branch</TableCell>
                     <TableCell>Status</TableCell>
-                    <TableCell>Marked Time</TableCell>
-                    <TableCell>Work Summary</TableCell>
+                    <TableCell>Check In</TableCell>
+                    <TableCell>Check Out</TableCell>
                     <TableCell>Hours</TableCell>
-                    <TableCell>Self Score</TableCell>
                     <TableCell>Actions</TableCell>
                   </TableRow>
                 </TableHead>
@@ -683,6 +627,7 @@ const AttendanceManagement = () => {
                           </Box>
                         </TableCell>
                         <TableCell>{employee.department}</TableCell>
+                        <TableCell>{employee.branch || 'N/A'}</TableCell>
                         <TableCell>
                           <Chip
                             label={getStatusLabel(employee.status)}
@@ -690,30 +635,18 @@ const AttendanceManagement = () => {
                             size="small"
                           />
                         </TableCell>
-                        <TableCell>{employee.markedTime}</TableCell>
+                        <TableCell>{employee.checkInTime || '-'}</TableCell>
+                        <TableCell>{employee.checkOutTime || '-'}</TableCell>
                         <TableCell>
-                          <Typography variant="body2" noWrap sx={{ maxWidth: 200 }}>
-                            {employee.workSummary.substring(0, 40)}
-                            {employee.workSummary.length > 40 && '...'}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            {employee.totalHours}h
-                            <LinearProgress
-                              variant="determinate"
-                              value={(employee.totalHours / 8) * 100}
-                              sx={{ width: 50, height: 4 }}
-                            />
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          {employee.selfScore > 0 ? (
-                            <Chip
-                              label={`${employee.selfScore}/10`}
-                              color={employee.selfScore >= 8 ? 'success' : employee.selfScore >= 6 ? 'warning' : 'error'}
-                              size="small"
-                            />
+                          {employee.workHours ? (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              {employee.workHours}h
+                              <LinearProgress
+                                variant="determinate"
+                                value={(employee.workHours / 8) * 100}
+                                sx={{ width: 50, height: 4 }}
+                              />
+                            </Box>
                           ) : '-'}
                         </TableCell>
                         <TableCell>
@@ -813,9 +746,9 @@ const AttendanceManagement = () => {
                       <CalendarMonth />
                     </Avatar>
                     <Box>
-                      <Typography variant="h6">{monthlyStats.avgScore}</Typography>
+                      <Typography variant="h6">{monthlyStats.totalAbsent}</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        Avg Score
+                        Total Absent Days
                       </Typography>
                     </Box>
                   </Box>
@@ -839,42 +772,28 @@ const AttendanceManagement = () => {
                   />
                 </Grid>
                 <Grid item xs={12} md={3}>
-                  <Autocomplete
+                  <TextField
                     fullWidth
-                    options={employees}
-                    value={filterEmployee || null}
-                    onChange={(event, newValue) => setFilterEmployee(newValue || '')}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Employee"
-                        placeholder="Search employee..."
-                      />
-                    )}
-                    freeSolo
-                    clearOnEscape
-                    includeInputInList
-                    filterOptions={(options, { inputValue }) => {
-                      const filtered = options.filter(option =>
-                        option.toLowerCase().includes(inputValue.toLowerCase())
-                      );
-                      return inputValue === '' ? ['All Employees', ...filtered] : filtered;
-                    }}
+                    label="Employee Name/ID"
+                    value={filterEmployee}
+                    onChange={(e) => setFilterEmployee(e.target.value)}
+                    placeholder="Search employee..."
+                    size="small"
                   />
                 </Grid>
                 <Grid item xs={12} md={3}>
-                  <FormControl fullWidth>
+                  <FormControl fullWidth size="small">
                     <InputLabel>Department</InputLabel>
                     <Select
                       value={filterDepartment}
                       onChange={(e) => setFilterDepartment(e.target.value)}
                       label="Department"
                     >
-                      <MenuItem value="">All Departments</MenuItem>
-                      <MenuItem value="Customer Service">Customer Service</MenuItem>
-                      <MenuItem value="IT Support">IT Support</MenuItem>
-                      <MenuItem value="Accounts">Accounts</MenuItem>
-                      <MenuItem value="HR">HR</MenuItem>
+                      {departments.map((dept) => (
+                        <MenuItem key={dept} value={dept}>
+                          {dept}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </Grid>
@@ -906,7 +825,7 @@ const AttendanceManagement = () => {
                       .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                       .map((employee) => {
                         const isExpanded = expandedRow === employee.employeeId;
-                        const monthlyCalendar = isExpanded ? generateMonthlyCalendar(employee.employeeId) : [];
+                        const monthlyCalendar = employeeCalendarData[employee.employeeId] || [];
                         
                         return (
                           <React.Fragment key={employee.employeeId}>
@@ -949,8 +868,8 @@ const AttendanceManagement = () => {
                               <TableCell>{employee.avgHours}h</TableCell>
                               <TableCell>
                                 <Chip
-                                  label={`${employee.avgScore}/10`}
-                                  color={employee.avgScore >= 8 ? 'success' : employee.avgScore >= 6 ? 'warning' : 'error'}
+                                  label={`N/A`}
+                                  color="default"
                                   size="small"
                                 />
                               </TableCell>
@@ -969,6 +888,11 @@ const AttendanceManagement = () => {
                             {isExpanded && (
                               <TableRow>
                                 <TableCell colSpan={10} sx={{ backgroundColor: '#f5f5f5', p: 3 }}>
+                                  {monthlyCalendar.length === 0 ? (
+                                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                                      <CircularProgress size={24} />
+                                    </Box>
+                                  ) : (
                                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                     <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                       <CalendarMonth /> Monthly Attendance Calendar - {filterMonth}
@@ -1054,6 +978,7 @@ const AttendanceManagement = () => {
                                       </Box>
                                     </Box>
                                   </Box>
+                                  )}
                                 </TableCell>
                               </TableRow>
                             )}
@@ -1093,6 +1018,7 @@ const AttendanceManagement = () => {
                   <Typography><strong>Employee ID:</strong> {selectedEmployee.employeeId}</Typography>
                   <Typography><strong>Department:</strong> {selectedEmployee.department}</Typography>
                   <Typography><strong>Date:</strong> {selectedEmployee.date}</Typography>
+                  <Typography><strong>Branch:</strong> {selectedEmployee.branch || 'N/A'}</Typography>
                   <Typography><strong>Status:</strong> 
                     <Chip
                       label={getStatusLabel(selectedEmployee.status)}
@@ -1103,14 +1029,15 @@ const AttendanceManagement = () => {
                   </Typography>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <Typography variant="h6" gutterBottom>Work Summary</Typography>
-                  <Typography><strong>Marked Time:</strong> {selectedEmployee.markedTime}</Typography>
-                  <Typography><strong>Total Hours:</strong> {selectedEmployee.totalHours}h</Typography>
-                  <Typography><strong>Self Score:</strong> {selectedEmployee.selfScore}/10</Typography>
+                  <Typography variant="h6" gutterBottom>Attendance Details</Typography>
+                  <Typography><strong>Check In:</strong> {selectedEmployee.checkInTime || 'Not checked in'}</Typography>
+                  <Typography><strong>Check Out:</strong> {selectedEmployee.checkOutTime || 'Not checked out'}</Typography>
+                  <Typography><strong>Work Hours:</strong> {selectedEmployee.workHours ? `${selectedEmployee.workHours}h` : 'N/A'}</Typography>
+                  <Typography><strong>Location:</strong> {selectedEmployee.location || 'N/A'}</Typography>
                 </Grid>
                 <Grid item xs={12}>
-                  <Typography variant="h6" gutterBottom>Work Done Today</Typography>
-                  <Typography>{selectedEmployee.workSummary}</Typography>
+                  <Typography variant="h6" gutterBottom>Notes</Typography>
+                  <Typography>{selectedEmployee.notes || 'No notes available'}</Typography>
                 </Grid>
               </Grid>
             )}

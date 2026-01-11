@@ -101,6 +101,61 @@ const attendanceService = {
       };
     }
   },
+
+  // ADMIN METHODS
+
+  /**
+   * Get daily attendance for all employees with optional filters
+   * @param {Object} params - Query parameters
+   * @param {string} params.date - Date in YYYY-MM-DD format (optional)
+   * @param {string} params.branch - Branch name filter (optional)
+   * @param {string} params.department - Department filter (optional)
+   * @param {string} params.employeeId - Employee ID filter (optional)
+   */
+  getDailyAttendance: async (params = {}) => {
+    try {
+      const response = await attendanceApi.get('/admin/AdminAttendance/daily', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching daily attendance:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get monthly attendance summary for all employees with optional filters
+   * @param {Object} params - Query parameters
+   * @param {string} params.month - Month in YYYY-MM format (optional)
+   * @param {string} params.branch - Branch name filter (optional)
+   * @param {string} params.department - Department filter (optional)
+   * @param {string} params.employeeId - Employee ID filter (optional)
+   */
+  getMonthlyAttendance: async (params = {}) => {
+    try {
+      const response = await attendanceApi.get('/admin/AdminAttendance/monthly', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching monthly attendance:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get detailed attendance history for a specific employee
+   * @param {string} employeeId - Employee ID
+   * @param {number} days - Number of days to fetch (default 30)
+   */
+  getEmployeeAttendanceDetails: async (employeeId, days = 30) => {
+    try {
+      const response = await attendanceApi.get(`/admin/AdminAttendance/employee/${employeeId}`, {
+        params: { days }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching employee attendance details:', error);
+      throw error;
+    }
+  },
 };
 
 export default attendanceService;

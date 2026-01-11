@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -70,11 +70,24 @@ const LeaveManagement = () => {
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [error, setError] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  
+  // Track if initial fetch has been done to prevent duplicate calls
+  const hasFetchedRef = useRef(false);
+  const previousBranchRef = useRef(null);
+  const effectiveBranch = getEffectiveBranch();
 
-  // Fetch leave requests on component mount and when branch/filters change
+  // Fetch leave requests on component mount and when branch changes
   useEffect(() => {
-    fetchLeaveRequests();
-  }, [getEffectiveBranch()]);
+    const shouldFetch = 
+      !hasFetchedRef.current || 
+      previousBranchRef.current !== effectiveBranch;
+
+    if (shouldFetch) {
+      hasFetchedRef.current = true;
+      previousBranchRef.current = effectiveBranch;
+      fetchLeaveRequests();
+    }
+  }, [effectiveBranch]);
 
   const fetchLeaveRequests = async () => {
     try {
@@ -82,7 +95,7 @@ const LeaveManagement = () => {
       setError(null);
       
       const filters = {
-        branch: isSuperAdmin ? getEffectiveBranch() : undefined,
+        branch: isSuperAdmin ? effectiveBranch : undefined,
       };
       
       const data = await adminLeaveService.getLeaveRequests(filters);
