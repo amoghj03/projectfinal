@@ -27,6 +27,7 @@ import {
   Paper,
   IconButton,
   Chip,
+  CircularProgress,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -48,8 +49,9 @@ import {
   Assignment,
 } from '@mui/icons-material';
 import { AdminLayout } from './AdminDashboard';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useBranch } from '../../contexts/BranchContext';
+import adminEmployeeService from '../../services/adminEmployeeService';
 
 const TabPanel = ({ children, value, index }) => (
     <div role="tabpanel" hidden={value !== index}>
@@ -61,38 +63,16 @@ const TabPanel = ({ children, value, index }) => (
 const AddEditEmployee = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { getEffectiveBranch, isSuperAdmin } = useBranch();
+  const { id } = useParams();
+  const { getEffectiveBranch, isSuperAdmin, branches } = useBranch();
   const isEdit = location.pathname.includes('edit');
   const existingEmployee = location.state?.employee;
 
   const [tabValue, setTabValue] = useState(0);
-  // Available roles - in a real app, this would come from an API
-  const availableRoles = [
-    {
-      id: 1,
-      name: 'Super Admin',
-      description: 'Full system access across all branches',
-      permissions: ['dashboard', 'employeeManagement', 'attendance', 'leaveManagement', 'skillReports', 'complaints', 'techIssues', 'reports', 'payslip'],
-    },
-    {
-      id: 2,
-      name: 'Branch Admin',
-      description: 'Full access within assigned branch',
-      permissions: ['dashboard', 'employeeManagement', 'attendance', 'leaveManagement', 'skillReports', 'complaints', 'techIssues', 'reports', 'payslip'],
-    },
-    {
-      id: 3,
-      name: 'HR Manager',
-      description: 'Human resources management access',
-      permissions: ['dashboard', 'employeeManagement', 'attendance', 'leaveManagement', 'complaints', 'reports', 'payslip'],
-    },
-    {
-      id: 4,
-      name: 'Operations Manager',
-      description: 'Daily operations and attendance management',
-      permissions: ['dashboard', 'attendance', 'leaveManagement', 'skillReports', 'complaints', 'techIssues', 'reports'],
-    },
-  ];
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [departments, setDepartments] = useState([]);
+  const [availableRoles, setAvailableRoles] = useState([]);
 
   const [formData, setFormData] = useState({
     employeeId: '',
@@ -101,60 +81,84 @@ const AddEditEmployee = () => {
     phone: '',
     gender: '',
     dateOfBirth: '',
-    department: '',
-    branch: '',
-    role: 'Employee',
+    branchName: '',
+    jobRole: 'Employee',
     status: 'Active',
     joinDate: new Date().toISOString().split('T')[0],
     salary: 0,
-    photo: null,
-    assignedRoles: [] // Array of role IDs
+    photoUrl: null,
+    roles: [] // Array of role names
   });
 
   const [errors, setErrors] = useState({});
   const [photoPreview, setPhotoPreview] = useState(null);
+  const [saveError, setSaveError] = useState(null);
 
-  useEffect(() => {
-    if (isEdit && existingEmployee) {
-      setFormData({
-        ...existingEmployee,
-        // Ensure assignedRoles exists with default values if not present
-        assignedRoles: existingEmployee.assignedRoles || []
-      });
-    } else if (!isEdit) {
-      // Auto-generate Employee ID
-      const timestamp = Date.now().toString().slice(-6);
-      setFormData(prev => ({
-        ...prev,
-        employeeId: `EMP${timestamp}`
-      }));
+  // Helper function to convert DateOnly to string format
+  const formatDate = (dateValue) => {
+    if (!dateValue) return '';
+    if (typeof dateValue === 'string') {
+      // If it's already a string, extract just the date part
+      return dateValue.split('T')[0];
     }
-  }, [isEdit, existingEmployee]);
+    return dateValue;
+  };
 
-  const departments = [
-    'Customer Service',
-    'IT Support', 
-    'Accounts',
-    'HR',
-    'Security',
-    'Management',
-    'Operations'
-  ];
+  // Fetch initial data
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        setInitialLoading(true);
+        
+        // Fetch departments and roles in parallel
+        const [depts, roles] = await Promise.all([
+          adminEmployeeService.getDepartments(),
+          adminEmployeeService.getAvailableRoles()
+        ]);
+        
+        setDepartments(depts);
+        setAvailableRoles(roles);
 
-  const branches = [
-    'Main Branch',
-    'Downtown Branch',
-    'West Branch',
-    'East Branch',
-    'Tech Center'
-  ];
+        // If editing, fetch employee data
+        if (isEdit && id) {
+          const employeeData = await adminEmployeeService.getEmployeeById(parseInt(id));
+          setFormData({
+            employeeId: employeeData.employeeId || '',
+            fullName: employeeData.fullName || '',
+            email: employeeData.email || '',
+            phone: employeeData.phone || '',
+            gender: employeeData.gender || '',
+            dateOfBirth: formatDate(employeeData.dateOfBirth) || '',
+            branchName: employeeData.branchName || '',
+            jobRole: employeeData.jobRole || 'Employee',
+            status: employeeData.status || 'Active',
+            joinDate: formatDate(employeeData.joinDate) || new Date().toISOString().split('T')[0],
+            salary: employeeData.salary || 0,
+            photoUrl: employeeData.photoUrl || null,
+            roles: employeeData.roles || []
+          });
+          if (employeeData.photoUrl) {
+            setPhotoPreview(employeeData.photoUrl);
+          }
+        } else if (!isEdit) {
+          // Auto-generate Employee ID
+          const timestamp = Date.now().toString().slice(-6);
+          setFormData(prev => ({
+            ...prev,
+            employeeId: `EMP${timestamp}`,
+            branchName: getEffectiveBranch()
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching initial data:', error);
+        setSaveError(error.response?.data?.message || 'Failed to load initial data');
+      } finally {
+        setInitialLoading(false);
+      }
+    };
 
-  const roles = [
-    { value: 'Employee', label: 'Employee' },
-    { value: 'Manager', label: 'Manager' },
-    { value: 'Admin', label: 'Admin' },
-    { value: 'HR', label: 'HR' }
-  ];
+    fetchInitialData();
+  }, [isEdit, id, getEffectiveBranch]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -171,14 +175,12 @@ const AddEditEmployee = () => {
     }
   };
 
-  const handleRoleToggle = (roleId) => {
+  const handleRoleToggle = (roleName) => {
     setFormData(prev => {
-      const isAssigned = prev.assignedRoles.includes(roleId);
+      const isAssigned = prev.roles.includes(roleName);
       return {
         ...prev,
-        assignedRoles: isAssigned
-          ? prev.assignedRoles.filter(id => id !== roleId)
-          : [...prev.assignedRoles, roleId]
+        roles: isAssigned ? [] : [roleName] // Only allow one role at a time
       };
     });
   };
@@ -189,7 +191,7 @@ const AddEditEmployee = () => {
       const reader = new FileReader();
       reader.onloadend = () => {
         setPhotoPreview(reader.result);
-        setFormData(prev => ({ ...prev, photo: reader.result }));
+        setFormData(prev => ({ ...prev, photoUrl: reader.result }));
       };
       reader.readAsDataURL(file);
     }
@@ -200,9 +202,7 @@ const AddEditEmployee = () => {
     
     if (!formData.fullName.trim()) newErrors.fullName = 'Full name is required';
     if (!formData.email.trim()) newErrors.email = 'Email is required';
-    if (!formData.phone.trim()) newErrors.phone = 'Phone is required';
-    if (!formData.department) newErrors.department = 'Department is required';
-    if (!formData.branch) newErrors.branch = 'Branch is required';
+    if (!formData.branchName) newErrors.branchName = 'Branch is required';
     
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -210,9 +210,9 @@ const AddEditEmployee = () => {
       newErrors.email = 'Invalid email format';
     }
     
-    // Phone validation
+    // Phone validation - only if phone is provided
     const phoneRegex = /^\+?[\d\s\-\(\)]+$/;
-    if (formData.phone && !phoneRegex.test(formData.phone)) {
+    if (formData.phone && formData.phone.trim() && !phoneRegex.test(formData.phone)) {
       newErrors.phone = 'Invalid phone format';
     }
 
@@ -220,11 +220,48 @@ const AddEditEmployee = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = () => {
-    if (validateForm()) {
-      // Here you would typically make an API call to save the employee
-      console.log('Saving employee:', formData);
+  const handleSave = async () => {
+    console.log('Save button clicked');
+    console.log('Form data:', formData);
+    
+    if (!validateForm()) {
+      console.log('Form validation failed');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setSaveError(null);
+
+      // Add default department since it's required by backend but not in UI
+      const dataToSave = {
+        ...formData,
+        department: 'General' // Default department value
+      };
+
+      console.log('Data to save:', dataToSave);
+
+      if (isEdit && id) {
+        // Update existing employee
+        console.log('Updating employee with ID:', id);
+        const result = await adminEmployeeService.updateEmployee(parseInt(id), dataToSave);
+        console.log('Update result:', result);
+      } else {
+        // Create new employee
+        console.log('Creating new employee');
+        const result = await adminEmployeeService.createEmployee(dataToSave);
+        console.log('Create result:', result);
+      }
+
+      console.log('Navigating to employee management');
       navigate('/admin/employee-management');
+    } catch (error) {
+      console.error('Error saving employee:', error);
+      console.error('Error response:', error.response);
+      console.error('Error data:', error.response?.data);
+      setSaveError(error.response?.data?.message || error.message || 'Failed to save employee');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -237,15 +274,16 @@ const AddEditEmployee = () => {
     alert('Password reset email sent to employee');
   };
 
-  
-  // Mock activity logs for edit mode
-  const activityLogs = [
-    { date: '2024-11-22', action: 'Logged in', details: 'Accessed employee portal at 09:15 AM' },
-    { date: '2024-11-22', action: 'Attendance marked', details: 'Marked attendance at 09:15 AM' },
-    { date: '2024-11-21', action: 'Skill test completed', details: 'Completed Banking Operations test - Score: 85%' },
-    { date: '2024-11-20', action: 'Work logged', details: 'Added 4 hours of customer service work' },
-    { date: '2024-11-19', action: 'Complaint submitted', details: 'Filed workplace lighting complaint #CMP001' }
-  ];
+  // Show loading state
+  if (initialLoading) {
+    return (
+      <AdminLayout>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+          <CircularProgress />
+        </Box>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -277,12 +315,17 @@ const AddEditEmployee = () => {
 
         <Card>
           <CardContent>
+            {saveError && (
+              <Alert severity="error" sx={{ mb: 3 }} onClose={() => setSaveError(null)}>
+                {saveError}
+              </Alert>
+            )}
+
             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
               <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)}>
                 <Tab label="General Info" />
                 <Tab label="Professional Details" />
                 <Tab label="Roles" />
-                {isEdit && <Tab label="Activity Logs" />}
               </Tabs>
             </Box>
 
@@ -358,7 +401,6 @@ const AddEditEmployee = () => {
                     value={formData.phone}
                     onChange={(e) => handleInputChange('phone', e.target.value)}
                     margin="normal"
-                    required
                     error={!!errors.phone}
                     helperText={errors.phone}
                   />
@@ -433,26 +475,12 @@ const AddEditEmployee = () => {
               <Grid container spacing={3}>
                 <Grid item xs={12} md={6}>
                   <FormControl fullWidth margin="normal" required>
-                    <InputLabel>Department</InputLabel>
-                    <Select
-                      value={formData.department}
-                      onChange={(e) => handleInputChange('department', e.target.value)}
-                      label="Department"
-                      error={!!errors.department}
-                    >
-                      {departments.map((dept) => (
-                        <MenuItem key={dept} value={dept}>{dept}</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-
-                  <FormControl fullWidth margin="normal" required>
                     <InputLabel>Branch</InputLabel>
                     <Select
-                      value={formData.branch}
-                      onChange={(e) => handleInputChange('branch', e.target.value)}
+                      value={formData.branchName}
+                      onChange={(e) => handleInputChange('branchName', e.target.value)}
                       label="Branch"
-                      error={!!errors.branch}
+                      error={!!errors.branchName}
                     >
                       {branches.map((branch) => (
                         <MenuItem key={branch} value={branch}>{branch}</MenuItem>
@@ -463,23 +491,22 @@ const AddEditEmployee = () => {
 
                 <Grid item xs={12} md={6}>
                   <FormControl fullWidth margin="normal">
-                    <InputLabel>Role</InputLabel>
+                    <InputLabel>Job Role</InputLabel>
                     <Select
-                      value={formData.role}
-                      onChange={(e) => handleInputChange('role', e.target.value)}
-                      label="Role"
+                      value={formData.jobRole}
+                      onChange={(e) => handleInputChange('jobRole', e.target.value)}
+                      label="Job Role"
                     >
-                      {roles.map((role) => (
-                        <MenuItem key={role.value} value={role.value}>
-                          {role.label}
-                        </MenuItem>
-                      ))}
+                      <MenuItem value="Employee">Employee</MenuItem>
+                      <MenuItem value="Manager">Manager</MenuItem>
+                      <MenuItem value="Supervisor">Supervisor</MenuItem>
+                      <MenuItem value="Team Lead">Team Lead</MenuItem>
                     </Select>
                   </FormControl>
 
                   <TextField
                     fullWidth
-                    label="Annual Salary"
+                    label="Monthly Salary"
                     value={formData.salary}
                     onChange={(e) => handleInputChange('salary', e.target.value)}
                     margin="normal"
@@ -487,12 +514,12 @@ const AddEditEmployee = () => {
                     InputProps={{
                       startAdornment: '₹',
                     }}
-                    helperText="Enter annual salary amount"
+                    helperText="Enter monthly salary amount"
                   />
 
-                  {formData.role === 'Admin' && (
-                    <Alert severity="warning" sx={{ mt: 2 }}>
-                      Admin role grants full system access. Please ensure this user requires administrative privileges.
+                  {formData.jobRole === 'Manager' && (
+                    <Alert severity="info" sx={{ mt: 2 }}>
+                      Manager role may require additional administrative privileges.
                     </Alert>
                   )}
                 </Grid>
@@ -512,15 +539,15 @@ const AddEditEmployee = () => {
                 <Typography variant="subtitle2">About Roles:</Typography>
                 <Typography variant="body2">
                   • Roles define which admin pages a user can access<br/>
-                  • You can assign multiple roles to a user<br/>
-                  • Users will have access to all pages from their assigned roles<br/>
+                  • You can assign only one role to a user<br/>
+                  • Users will have access to all pages from their assigned role<br/>
                   • Manage roles in the Role Management page
                 </Typography>
               </Alert>
 
               <Grid container spacing={2}>
                 {availableRoles.map((role) => {
-                  const isAssigned = formData.assignedRoles.includes(role.id);
+                  const isAssigned = formData.roles.includes(role.name);
                   return (
                     <Grid item xs={12} md={6} key={role.id}>
                       <Paper
@@ -536,12 +563,12 @@ const AddEditEmployee = () => {
                             boxShadow: 2,
                           },
                         }}
-                        onClick={() => handleRoleToggle(role.id)}
+                        onClick={() => handleRoleToggle(role.name)}
                       >
                         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
                           <Checkbox
                             checked={isAssigned}
-                            onChange={() => handleRoleToggle(role.id)}
+                            onChange={() => handleRoleToggle(role.name)}
                             onClick={(e) => e.stopPropagation()}
                           />
                           <Box sx={{ flex: 1 }}>
@@ -587,32 +614,32 @@ const AddEditEmployee = () => {
                 })}
               </Grid>
 
-              {formData.assignedRoles.length === 0 && (
+              {formData.roles.length === 0 && (
                 <Alert severity="warning" sx={{ mt: 3 }}>
-                  <Typography variant="subtitle2">No Roles Assigned</Typography>
+                  <Typography variant="subtitle2">No Role Assigned</Typography>
                   <Typography variant="body2">
-                    This user has no roles assigned and will not have access to any admin pages.
-                    Please assign at least one role.
+                    This user has no role assigned and will not have access to any admin pages.
+                    Please assign a role.
                   </Typography>
                 </Alert>
               )}
 
-              {formData.assignedRoles.length > 0 && (
+              {formData.roles.length > 0 && (
                 <Card sx={{ mt: 3, bgcolor: 'success.50' }}>
                   <CardContent>
                     <Typography variant="subtitle2" gutterBottom>
-                      Summary of Assigned Roles:
+                      Assigned Role:
                     </Typography>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                      {formData.assignedRoles.map((roleId) => {
-                        const role = availableRoles.find((r) => r.id === roleId);
+                      {formData.roles.map((roleName) => {
+                        const role = availableRoles.find((r) => r.name === roleName);
                         return role ? (
                           <Chip
-                            key={roleId}
+                            key={roleName}
                             label={role.name}
                             color="success"
                             icon={<Security />}
-                            onDelete={() => handleRoleToggle(roleId)}
+                            onDelete={() => handleRoleToggle(roleName)}
                           />
                         ) : null;
                       })}
@@ -622,97 +649,24 @@ const AddEditEmployee = () => {
               )}
             </TabPanel>
 
-            {/* Activity Logs Tab - Only for Edit Mode */}
-            {isEdit && (
-              <TabPanel value={tabValue} index={3}>
-                <Typography variant="h6" gutterBottom>
-                  Employee Activity Summary
-                </Typography>
-                
-                {/* Summary Cards */}
-                <Grid container spacing={2} sx={{ mb: 3 }}>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Card variant="outlined">
-                      <CardContent sx={{ textAlign: 'center' }}>
-                        <Typography variant="h6" color="primary">95%</Typography>
-                        <Typography variant="body2">Attendance Rate</Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Card variant="outlined">
-                      <CardContent sx={{ textAlign: 'center' }}>
-                        <Typography variant="h6" color="success.main">24</Typography>
-                        <Typography variant="body2">Tasks Completed</Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Card variant="outlined">
-                      <CardContent sx={{ textAlign: 'center' }}>
-                        <Typography variant="h6" color="warning.main">85%</Typography>
-                        <Typography variant="body2">Avg Skill Score</Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Card variant="outlined">
-                      <CardContent sx={{ textAlign: 'center' }}>
-                        <Typography variant="h6" color="info.main">2</Typography>
-                        <Typography variant="body2">Open Issues</Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                </Grid>
-
-                {/* Recent Activity */}
-                <Typography variant="subtitle1" gutterBottom>
-                  Recent Activity
-                </Typography>
-                <Paper variant="outlined" sx={{ maxHeight: 400, overflow: 'auto' }}>
-                  <List>
-                    {activityLogs.map((log, index) => (
-                      <React.Fragment key={index}>
-                        <ListItem>
-                          <ListItemIcon>
-                            <History color="action" />
-                          </ListItemIcon>
-                          <ListItemText
-                            primary={log.action}
-                            secondary={
-                              <Box>
-                                <Typography variant="body2">{log.details}</Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                  {log.date}
-                                </Typography>
-                              </Box>
-                            }
-                          />
-                        </ListItem>
-                        {index < activityLogs.length - 1 && <Divider />}
-                      </React.Fragment>
-                    ))}
-                  </List>
-                </Paper>
-              </TabPanel>
-            )}
-
             {/* Action Buttons */}
             <Box sx={{ mt: 4, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
               <Button
                 variant="outlined"
                 startIcon={<Cancel />}
                 onClick={handleCancel}
+                disabled={loading}
               >
                 Cancel
               </Button>
               <Button
                 variant="contained"
-                startIcon={<Save />}
+                startIcon={loading ? <CircularProgress size={20} /> : <Save />}
                 onClick={handleSave}
+                disabled={loading}
                 sx={{ background: 'linear-gradient(135deg, #64B5F6, #42A5F5)' }}
               >
-                {isEdit ? 'Update Employee' : 'Save Employee'}
+                {loading ? 'Saving...' : (isEdit ? 'Update Employee' : 'Save Employee')}
               </Button>
             </Box>
           </CardContent>

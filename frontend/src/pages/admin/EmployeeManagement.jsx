@@ -293,7 +293,40 @@ const EmployeeManagement = () => {
   };
 
   const handleEditEmployee = (employee) => {
-    navigate('/admin/employee-management/edit', { state: { employee } });
+    navigate(`/admin/employee-management/edit/${employee.id}`, { state: { employee } });
+  };
+
+  const handleToggleStatus = async (employee) => {
+    try {
+      const newStatus = employee.status === 'Active' ? 'Inactive' : 'Active';
+      const confirmMessage = newStatus === 'Inactive' 
+        ? `Are you sure you want to disable ${employee.fullName}? They will not be able to log in.`
+        : `Are you sure you want to reactivate ${employee.fullName}?`;
+      
+      if (!window.confirm(confirmMessage)) {
+        return;
+      }
+
+      setLoading(true);
+      
+      // Update employee status via API
+      await adminEmployeeService.updateEmployee(employee.id, {
+        ...employee,
+        status: newStatus,
+        department: employee.department || 'General' // Add default department if missing
+      });
+
+      // Refresh employee list
+      await fetchEmployees();
+      
+      // Show success message
+      alert(`Employee ${newStatus === 'Active' ? 'activated' : 'disabled'} successfully`);
+    } catch (error) {
+      console.error('Error toggling employee status:', error);
+      alert(error.response?.data?.message || 'Failed to update employee status');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const stats = {
@@ -341,7 +374,7 @@ const EmployeeManagement = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
               <Business fontSize="small" color="primary" />
               <Typography variant="body2" color="text.secondary">
-                Viewing: {getEffectiveBranch()} ({totalCount} employees)
+                Viewing: {getEffectiveBranch()} ({stats.active} Employees)
               </Typography>
               {!isSuperAdmin && (
                 <Chip 
@@ -414,21 +447,6 @@ const EmployeeManagement = () => {
                   {roles.map((role) => (
                     <MenuItem key={role.value} value={role.value}>
                       {role.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl size="small" sx={{ minWidth: 150 }}>
-                <InputLabel>Department</InputLabel>
-                <Select
-                  value={filterDepartment}
-                  onChange={(e) => setFilterDepartment(e.target.value)}
-                  label="Department"
-                >
-                  <MenuItem value="">All Departments</MenuItem>
-                  {departments.map((dept) => (
-                    <MenuItem key={dept} value={dept}>
-                      {dept}
                     </MenuItem>
                   ))}
                 </Select>
@@ -553,7 +571,8 @@ const EmployeeManagement = () => {
                             <IconButton
                               size="small"
                               color={employee.status === 'Active' ? 'error' : 'success'}
-                              title={employee.status === 'Active' ? 'Disable' : 'Enable'}
+                              title={employee.status === 'Active' ? 'InActive' : 'Active'}
+                              onClick={() => handleToggleStatus(employee)}
                             >
                               {employee.status === 'Active' ? <PersonOff /> : <Person />}
                             </IconButton>

@@ -121,6 +121,34 @@ const adminEmployeeService = {
       throw error;
     }
   },
+
+  /**
+   * Get available departments
+   * @returns {Promise} - Promise resolving to list of departments
+   */
+  getDepartments: async () => {
+    try {
+      const response = await axiosInstance.get('/admin/AdminEmployee/departments');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching departments:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get available roles for assignment
+   * @returns {Promise} - Promise resolving to list of roles with permissions
+   */
+  getAvailableRoles: async () => {
+    try {
+      const response = await axiosInstance.get('/admin/AdminEmployee/available-roles');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching available roles:', error);
+      throw error;
+    }
+  },
 };
 
 export default adminEmployeeService;

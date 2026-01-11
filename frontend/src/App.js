@@ -185,7 +185,7 @@ function  App() {
           />
           
           <Route 
-            path="/admin/employee-management/edit" 
+            path="/admin/employee-management/edit/:id" 
             element={
               <AdminProtectedRoute requiredPermission="employeeManagement">
                 <AddEditEmployee />
