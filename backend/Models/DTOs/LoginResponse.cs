@@ -20,5 +20,6 @@ public class UserData
     public bool HasAdminAccess { get; set; }
     public string? AdminRole { get; set; }
     public Dictionary<string, bool>? AdminPermissions { get; set; }
+    public Dictionary<string, bool>? EmployeePermissions { get; set; }
     public long TenantId { get; set; }
 }

@@ -57,19 +57,35 @@ const Layout = ({ children }) => {
   const hasAdminAccess = localStorage.getItem('hasAdminAccess') === 'true';
   const adminRole = localStorage.getItem('adminRole');
 
+  // Get employee permissions from localStorage
+  const getEmployeePermissions = () => {
+    try {
+      const permissions = localStorage.getItem('employeePermissions');
+      return permissions ? JSON.parse(permissions) : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const employeePermissions = getEmployeePermissions();
+
   const handleSwitchToAdmin = () => {
     localStorage.setItem('userRole', 'admin');
     navigate('/admin/dashboard');
   };
 
-  const menuItems = [
-    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-    { text: 'Employee Tracking', icon: <PersonOutline />, path: '/employee-tracking' },
-    { text: 'Leave Request', icon: <EventAvailable />, path: '/leave-request' },
-    { text: 'Skill Management', icon: <School />, path: '/skill-management' },
-    { text: 'Complaint Register', icon: <ReportProblem />, path: '/complaint-register' },
-    { text: 'Tech Issues Register', icon: <BugReport />, path: '/tech-issues' },
+  // All menu items with their permission requirements
+  const allMenuItems = [
+    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', permission: 'dashboard' },
+    { text: 'Employee Tracking', icon: <PersonOutline />, path: '/employee-tracking', permission: 'attendance' },
+    { text: 'Leave Request', icon: <EventAvailable />, path: '/leave-request', permission: 'leaveRequest' },
+    { text: 'Skill Management', icon: <School />, path: '/skill-management', permission: 'skillManagement' },
+    { text: 'Complaint Register', icon: <ReportProblem />, path: '/complaint-register', permission: 'complaints' },
+    { text: 'Tech Issues Register', icon: <BugReport />, path: '/tech-issues', permission: 'techIssues' },
   ];
+
+  // Filter menu items based on permissions
+  const menuItems = allMenuItems.filter(item => employeePermissions[item.permission] === true);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -341,13 +357,27 @@ const Dashboard = () => {
 
   const analyticsCards = getAnalyticsCards();
 
-  const quickAccessCards = [
+  // Get employee permissions for filtering
+  const getEmployeePermissionsForCards = () => {
+    try {
+      const permissions = localStorage.getItem('employeePermissions');
+      return permissions ? JSON.parse(permissions) : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const cardPermissions = getEmployeePermissionsForCards();
+
+  // All quick access cards with their permission requirements
+  const allQuickAccessCards = [
     {
       title: 'Attendance',
       description: 'Mark your daily attendance',
       icon: <AccessTime sx={{ fontSize: 40, color: '#64B5F6' }} />,
       color: '#E3F2FD',
       path: '/employee-tracking',
+      permission: 'attendance',
     },
     {
       title: 'Leave Request',
@@ -355,6 +385,7 @@ const Dashboard = () => {
       icon: <EventAvailable sx={{ fontSize: 40, color: '#81C784' }} />,
       color: '#E8F5E8',
       path: '/leave-request',
+      permission: 'leaveRequest',
     },
     {
       title: 'Skill Management',
@@ -362,6 +393,7 @@ const Dashboard = () => {
       icon: <School sx={{ fontSize: 40, color: '#FFB74D' }} />,
       color: '#FFF3E0',
       path: '/skill-management',
+      permission: 'skillManagement',
     },
     {
       title: 'Complaint Register',
@@ -369,6 +401,7 @@ const Dashboard = () => {
       icon: <ReportProblem sx={{ fontSize: 40, color: '#F48FB1' }} />,
       color: '#FCE4EC',
       path: '/complaint-register',
+      permission: 'complaints',
     },
     {
       title: 'Tech Issues Register',
@@ -376,8 +409,12 @@ const Dashboard = () => {
       icon: <BugReport sx={{ fontSize: 40, color: '#CE93D8' }} />,
       color: '#F3E5F5',
       path: '/tech-issues',
+      permission: 'techIssues',
     },
   ];
+
+  // Filter cards based on permissions
+  const quickAccessCards = allQuickAccessCards.filter(card => cardPermissions[card.permission] === true);
 
   // Show loading state
   if (loading) {

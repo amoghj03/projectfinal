@@ -28,12 +28,33 @@ import ReportsDownload from './pages/admin/ReportsDownload';
 import PayslipGeneration from './pages/admin/PayslipGeneration';
 
 // Protected Route Components
-const EmployeeProtectedRoute = ({ children }) => {
+const EmployeeProtectedRoute = ({ children, requiredPermission }) => {
   const employeeName = localStorage.getItem('employeeName');
   const userRole = localStorage.getItem('userRole');
   
   if (!employeeName || userRole !== 'employee') {
     return <Navigate to="/" replace />;
+  }
+  
+  // Check if specific permission is required
+  if (requiredPermission) {
+    try {
+      const permissions = localStorage.getItem('employeePermissions');
+      if (permissions) {
+        const employeePermissions = JSON.parse(permissions);
+        // Check if permission exists and is true
+        if (employeePermissions[requiredPermission] !== true) {
+          // User doesn't have permission for this page
+          return <Navigate to="/dashboard" replace />;
+        }
+      } else {
+        // No permissions stored, deny access
+        return <Navigate to="/dashboard" replace />;
+      }
+    } catch (error) {
+      console.error('Error checking permissions:', error);
+      return <Navigate to="/dashboard" replace />;
+    }
   }
   
   return children;
@@ -84,7 +105,7 @@ function  App() {
           <Route 
             path="/dashboard" 
             element={
-              <EmployeeProtectedRoute>
+              <EmployeeProtectedRoute requiredPermission="dashboard">
                 <Dashboard />
               </EmployeeProtectedRoute>
             } 
@@ -93,7 +114,7 @@ function  App() {
           <Route 
             path="/employee-tracking" 
             element={
-              <EmployeeProtectedRoute>
+              <EmployeeProtectedRoute requiredPermission="attendance">
                 <EmployeeTracking />
               </EmployeeProtectedRoute>
             } 
@@ -102,7 +123,7 @@ function  App() {
           <Route 
             path="/leave-request" 
             element={
-              <EmployeeProtectedRoute>
+              <EmployeeProtectedRoute requiredPermission="leaveRequest">
                 <LeaveRequest />
               </EmployeeProtectedRoute>
             } 
@@ -111,7 +132,7 @@ function  App() {
           <Route 
             path="/skill-management" 
             element={
-              <EmployeeProtectedRoute>
+              <EmployeeProtectedRoute requiredPermission="skillManagement">
                 <SkillManagement />
               </EmployeeProtectedRoute>
             } 
@@ -120,7 +141,7 @@ function  App() {
           <Route 
             path="/complaint-register" 
             element={
-              <EmployeeProtectedRoute>
+              <EmployeeProtectedRoute requiredPermission="complaints">
                 <ComplaintRegister />
               </EmployeeProtectedRoute>
             } 
@@ -129,7 +150,7 @@ function  App() {
           <Route 
             path="/tech-issues" 
             element={
-              <EmployeeProtectedRoute>
+              <EmployeeProtectedRoute requiredPermission="techIssues">
                 <TechIssuesRegister />
               </EmployeeProtectedRoute>
             } 

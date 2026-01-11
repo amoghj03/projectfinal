@@ -78,43 +78,54 @@ public class AuthService : IAuthService
             var hasAdminAccess = roles.Any(r => r.Name == "Admin" || r.Name == "SuperAdmin");
             string? adminRole = null;
 
-            if (roles.Any(r => r.Name == "Admin" || r.Name == "SuperAdmin"))
+            if (roles.Any(r => r.Name == "SuperAdmin"))
             {
-                // Check if super admin (CEO) or regular admin
-                adminRole = employee.JobRole?.ToLower().Contains("ceo") == true ? "superadmin" : "admin";
+                adminRole = "superadmin";
             }
-            else if (roles.Any(r => r.Name == "HR"))
+            else if (roles.Any(r => r.Name == "Admin"))
             {
                 adminRole = "admin";
             }
 
-            // Build permissions dictionary
-            var permissions = new Dictionary<string, bool>();
+            // Get all permissions from user's roles
+            var allPermissions = roles
+                .SelectMany(r => r.RolePermissions)
+                .Select(rp => rp.Permission)
+                .Distinct()
+                .ToList();
+
+            // Build permissions dictionary for admin
+            var adminPermissions = new Dictionary<string, bool>();
             if (hasAdminAccess)
             {
-                var allPermissions = roles
-                    .SelectMany(r => r.RolePermissions)
-                    .Select(rp => rp.Permission)
-                    .Distinct()
-                    .ToList();
-
                 // Map permissions to frontend permission keys
-                permissions["dashboard"] = allPermissions.Any(p => p.Name.Contains("dashboard"));
-                permissions["employeeManagement"] = allPermissions.Any(p => p.Name.Contains("employee.manage"));
-                permissions["attendance"] = allPermissions.Any(p => p.Name.Contains("attendance"));
-                permissions["leaveManagement"] = allPermissions.Any(p => p.Name.Contains("leave.approve"));
-                permissions["skillReports"] = allPermissions.Any(p => p.Name.Contains("skill") || p.Name.Contains("report"));
-                permissions["complaints"] = allPermissions.Any(p => p.Name.Contains("complaint"));
-                permissions["techIssues"] = allPermissions.Any(p => p.Name.Contains("tech") || p.Name.Contains("issue"));
-                permissions["reports"] = allPermissions.Any(p => p.Name.Contains("report"));
-                permissions["payslip"] = allPermissions.Any(p => p.Name.Contains("payslip") || p.Name.Contains("payroll"));
+                adminPermissions["dashboard"] = allPermissions.Any(p => p.Name.Contains("dashboard"));
+                adminPermissions["employeeManagement"] = allPermissions.Any(p => p.Name.Contains("employee.manage"));
+                adminPermissions["attendance"] = allPermissions.Any(p => p.Name.Contains("attendance"));
+                adminPermissions["leaveManagement"] = allPermissions.Any(p => p.Name.Contains("leave.approve"));
+                adminPermissions["skillReports"] = allPermissions.Any(p => p.Name.Contains("skill") || p.Name.Contains("report"));
+                adminPermissions["complaints"] = allPermissions.Any(p => p.Name.Contains("complaint"));
+                adminPermissions["techIssues"] = allPermissions.Any(p => p.Name.Contains("tech") || p.Name.Contains("issue"));
+                adminPermissions["reports"] = allPermissions.Any(p => p.Name.Contains("report"));
+                adminPermissions["payslip"] = allPermissions.Any(p => p.Name.Contains("payslip") || p.Name.Contains("payroll"));
 
                 // Super admin gets all permissions
                 if (adminRole == "superadmin")
                 {
-                    permissions = permissions.ToDictionary(k => k.Key, v => true);
+                    adminPermissions = adminPermissions.ToDictionary(k => k.Key, v => true);
                 }
             }
+
+            // Build permissions dictionary for employee
+            var employeePermissions = new Dictionary<string, bool>
+            {
+                ["dashboard"] = allPermissions.Any(p => p.Name == "dashboard.view"),
+                ["attendance"] = allPermissions.Any(p => p.Name == "employee.view"),
+                ["leaveRequest"] = allPermissions.Any(p => p.Name == "leave.request"),
+                ["skillManagement"] = allPermissions.Any(p => p.Name == "skill.manage"),
+                ["complaints"] = allPermissions.Any(p => p.Name == "complaint.create"),
+                ["techIssues"] = allPermissions.Any(p => p.Name == "techissue.create")
+            };
 
             // Generate JWT token (simplified - in production use proper JWT)
             var token = GenerateToken(user.Id, user.Email);
@@ -135,7 +146,8 @@ public class AuthService : IAuthService
                     Role = roles.FirstOrDefault()?.Name ?? "Employee",
                     HasAdminAccess = hasAdminAccess,
                     AdminRole = adminRole,
-                    AdminPermissions = hasAdminAccess ? permissions : null,
+                    AdminPermissions = hasAdminAccess ? adminPermissions : null,
+                    EmployeePermissions = employeePermissions,
                     TenantId = user.TenantId
                 }
             };

@@ -52,6 +52,11 @@ class AuthService {
       localStorage.setItem('employeeId', user.employeeId);
       localStorage.setItem('tenantId', user.tenantId);
 
+      // Store employee permissions if available
+      if (user.employeePermissions) {
+        localStorage.setItem('employeePermissions', JSON.stringify(user.employeePermissions));
+      }
+
       // Store admin permissions if available
       if (user.adminPermissions) {
         localStorage.setItem('adminPermissions', JSON.stringify(user.adminPermissions));
