@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -26,6 +26,8 @@ import {
   Divider,
   Alert,
   Tooltip,
+  CircularProgress,
+  Snackbar,
 } from '@mui/material';
 import {
   Add,
@@ -41,185 +43,78 @@ import {
 } from '@mui/icons-material';
 import { AdminLayout } from './AdminDashboard';
 import { useBranch } from '../../contexts/BranchContext';
+import roleService from '../../services/roleService';
 
 const RoleManagement = () => {
   const { getEffectiveBranch, isSuperAdmin } = useBranch();
-  const [roles, setRoles] = useState([
-    {
-      id: 1,
-      name: 'Super Admin',
-      description: 'Full system access across all branches',
-      permissions: {
-        dashboard: true,
-        employeeManagement: true,
-        attendance: true,
-        leaveManagement: true,
-        skillReports: true,
-        complaints: true,
-        techIssues: true,
-        reports: true,
-        payslip: true,
-      },
-      userCount: 2,
-      isSystem: true, // Cannot be deleted
-    },
-    {
-      id: 2,
-      name: 'Branch Admin',
-      description: 'Full access within assigned branch',
-      permissions: {
-        dashboard: true,
-        employeeManagement: true,
-        attendance: true,
-        leaveManagement: true,
-        skillReports: true,
-        complaints: true,
-        techIssues: true,
-        reports: true,
-        payslip: true,
-      },
-      userCount: 5,
-      isSystem: true,
-    },
-    {
-      id: 3,
-      name: 'HR Manager',
-      description: 'Human resources management access',
-      permissions: {
-        dashboard: true,
-        employeeManagement: true,
-        attendance: true,
-        leaveManagement: true,
-        skillReports: false,
-        complaints: true,
-        techIssues: false,
-        reports: true,
-        payslip: true,
-      },
-      userCount: 3,
-      isSystem: false,
-    },
-    {
-      id: 4,
-      name: 'Operations Manager',
-      description: 'Daily operations and attendance management',
-      permissions: {
-        dashboard: true,
-        employeeManagement: false,
-        attendance: true,
-        leaveManagement: true,
-        skillReports: true,
-        complaints: true,
-        techIssues: true,
-        reports: true,
-        payslip: false,
-      },
-      userCount: 7,
-      isSystem: false,
-    },
-  ]);
+  const [roles, setRoles] = useState([]);
+  const [allPermissions, setAllPermissions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+
+  useEffect(() => {
+    fetchRolesAndPermissions();
+  }, []);
+
+  const fetchRolesAndPermissions = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [rolesData, permissionsData] = await Promise.all([
+        roleService.getAllRoles(),
+        roleService.getAllPermissions(),
+      ]);
+      setRoles(rolesData);
+      setAllPermissions(permissionsData);
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setError('Failed to load roles and permissions');
+      setSnackbar({
+        open: true,
+        message: 'Failed to load roles and permissions',
+        severity: 'error',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const [openDialog, setOpenDialog] = useState(false);
   const [editingRole, setEditingRole] = useState(null);
+  const [viewMode, setViewMode] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    permissions: {
-      dashboard: false,
-      employeeManagement: false,
-      attendance: false,
-      leaveManagement: false,
-      skillReports: false,
-      complaints: false,
-      techIssues: false,
-      reports: false,
-      payslip: false,
-    },
+    permissionIds: [],
   });
 
   const [errors, setErrors] = useState({});
 
-  const pagePermissions = [
-    {
-      key: 'dashboard',
-      label: 'Dashboard',
-      description: 'Main admin dashboard with overview stats',
-      icon: <AdminPanelSettings />,
-    },
-    {
-      key: 'employeeManagement',
-      label: 'Employee Management',
-      description: 'Add, edit, view, and manage employees',
-      icon: <ManageAccounts />,
-    },
-    {
-      key: 'attendance',
-      label: 'Attendance Management',
-      description: 'View and manage employee attendance records',
-      icon: <Security />,
-    },
-    {
-      key: 'leaveManagement',
-      label: 'Leave Management',
-      description: 'Approve and manage employee leave requests',
-      icon: <Security />,
-    },
-    {
-      key: 'skillReports',
-      label: 'Skill Test Reports',
-      description: 'View employee skill test results and analytics',
-      icon: <Security />,
-    },
-    {
-      key: 'complaints',
-      label: 'Complaints Overview',
-      description: 'View and manage employee complaints',
-      icon: <Security />,
-    },
-    {
-      key: 'techIssues',
-      label: 'Tech Issues Management',
-      description: 'Manage technical issues and support tickets',
-      icon: <Security />,
-    },
-    {
-      key: 'reports',
-      label: 'Reports Download',
-      description: 'Download and export various system reports',
-      icon: <Security />,
-    },
-    {
-      key: 'payslip',
-      label: 'Payslip Generation',
-      description: 'Generate and manage employee payslips',
-      icon: <Security />,
-    },
-  ];
+  const pagePermissions = allPermissions.map((perm) => ({
+    id: perm.id,
+    key: perm.name,
+    label: perm.displayName,
+    description: perm.description,
+    category: perm.category,
+    icon: <Security />,
+  }));
 
-  const handleOpenDialog = (role = null) => {
+  const handleOpenDialog = (role = null, isViewOnly = false) => {
+    setViewMode(isViewOnly);
     if (role) {
       setEditingRole(role);
       setFormData({
         name: role.name,
         description: role.description,
-        permissions: { ...role.permissions },
+        permissionIds: role.permissions || [],
       });
     } else {
       setEditingRole(null);
       setFormData({
         name: '',
         description: '',
-        permissions: {
-          dashboard: false,
-          employeeManagement: false,
-          attendance: false,
-          leaveManagement: false,
-          skillReports: false,
-          complaints: false,
-          techIssues: false,
-          reports: false,
-          payslip: false,
-        },
+        permissionIds: [],
       });
     }
     setErrors({});
@@ -229,20 +124,11 @@ const RoleManagement = () => {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setEditingRole(null);
+    setViewMode(false);
     setFormData({
       name: '',
       description: '',
-      permissions: {
-        dashboard: false,
-        employeeManagement: false,
-        attendance: false,
-        leaveManagement: false,
-        skillReports: false,
-        complaints: false,
-        techIssues: false,
-        reports: false,
-        payslip: false,
-      },
+      permissionIds: [],
     });
     setErrors({});
   };
@@ -260,14 +146,16 @@ const RoleManagement = () => {
     }
   };
 
-  const handlePermissionChange = (permission, checked) => {
-    setFormData((prev) => ({
-      ...prev,
-      permissions: {
-        ...prev.permissions,
-        [permission]: checked,
-      },
-    }));
+  const handlePermissionChange = (permissionId, checked) => {
+    setFormData((prev) => {
+      const newPermissionIds = checked
+        ? [...prev.permissionIds, permissionId]
+        : prev.permissionIds.filter((id) => id !== permissionId);
+      return {
+        ...prev,
+        permissionIds: newPermissionIds,
+      };
+    });
   };
 
   const validateForm = () => {
@@ -276,8 +164,7 @@ const RoleManagement = () => {
     if (!formData.description.trim()) newErrors.description = 'Description is required';
     
     // Check if at least one permission is selected
-    const hasPermission = Object.values(formData.permissions).some((v) => v);
-    if (!hasPermission) {
+    if (formData.permissionIds.length === 0) {
       newErrors.permissions = 'Please select at least one permission';
     }
 
@@ -285,47 +172,54 @@ const RoleManagement = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = () => {
-    if (validateForm()) {
+  const handleSave = async () => {
+    if (!validateForm()) return;
+
+    try {
       if (editingRole) {
         // Update existing role
-        setRoles((prev) =>
-          prev.map((role) =>
-            role.id === editingRole.id
-              ? {
-                  ...role,
-                  name: formData.name,
-                  description: formData.description,
-                  permissions: formData.permissions,
-                }
-              : role
-          )
-        );
-      } else {
-        // Create new role
-        const newRole = {
-          id: Math.max(...roles.map((r) => r.id)) + 1,
+        const updateData = {
           name: formData.name,
           description: formData.description,
-          permissions: formData.permissions,
-          userCount: 0,
-          isSystem: false,
+          permissionIds: formData.permissionIds,
         };
-        setRoles((prev) => [...prev, newRole]);
+        await roleService.updateRole(editingRole.id, updateData);
+        setSnackbar({
+          open: true,
+          message: 'Role updated successfully',
+          severity: 'success',
+        });
       }
+      // Refresh the roles list
+      await fetchRolesAndPermissions();
       handleCloseDialog();
+    } catch (err) {
+      console.error('Error saving role:', err);
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.message || 'Failed to save role',
+        severity: 'error',
+      });
     }
   };
 
   const handleDelete = (roleId) => {
-    if (window.confirm('Are you sure you want to delete this role? Users assigned to this role will lose their permissions.')) {
-      setRoles((prev) => prev.filter((role) => role.id !== roleId));
-    }
+    // Delete functionality removed as per requirements
   };
 
   const countPermissions = (permissions) => {
-    return Object.values(permissions).filter((v) => v).length;
+    return Array.isArray(permissions) ? permissions.length : 0;
   };
+
+  if (loading) {
+    return (
+      <AdminLayout>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+          <CircularProgress />
+        </Box>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -351,6 +245,7 @@ const RoleManagement = () => {
               variant="contained"
               startIcon={<Add />}
               onClick={() => handleOpenDialog()}
+              disabled
             >
               Create New Role
             </Button>
@@ -474,32 +369,21 @@ const RoleManagement = () => {
                       <TableCell align="center">
                         <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
                           <Tooltip title="View Permissions">
-                            <IconButton size="small" color="info" onClick={() => handleOpenDialog(role)}>
+                            <IconButton size="small" color="info" onClick={() => handleOpenDialog(role, true)}>
                               <Visibility />
                             </IconButton>
                           </Tooltip>
-                          <Tooltip title="Edit Role">
-                            <IconButton
-                              size="small"
-                              color="primary"
-                              onClick={() => handleOpenDialog(role)}
-                              disabled={role.isSystem}
-                            >
-                              <Edit />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title={role.isSystem ? "System roles cannot be deleted" : "Delete Role"}>
-                            <span>
+                          {isSuperAdmin && (
+                            <Tooltip title="Edit Role">
                               <IconButton
                                 size="small"
-                                color="error"
-                                onClick={() => handleDelete(role.id)}
-                                disabled={role.isSystem}
+                                color="primary"
+                                onClick={() => handleOpenDialog(role, false)}
                               >
-                                <Delete />
+                                <Edit />
                               </IconButton>
-                            </span>
-                          </Tooltip>
+                            </Tooltip>
+                          )}
                         </Box>
                       </TableCell>
                     </TableRow>
@@ -513,7 +397,7 @@ const RoleManagement = () => {
         {/* Create/Edit Role Dialog */}
         <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
           <DialogTitle>
-            {editingRole ? (editingRole.isSystem ? 'View Role' : 'Edit Role') : 'Create New Role'}
+            {viewMode ? 'View Role Permissions' : editingRole ? 'Edit Role' : 'Create New Role'}
           </DialogTitle>
           <DialogContent>
             <Box sx={{ mt: 2 }}>
@@ -530,7 +414,7 @@ const RoleManagement = () => {
                     onChange={(e) => handleInputChange('name', e.target.value)}
                     error={!!errors.name}
                     helperText={errors.name}
-                    disabled={editingRole?.isSystem}
+                    disabled
                     placeholder="e.g., HR Manager, Operations Lead"
                   />
                 </Grid>
@@ -544,7 +428,7 @@ const RoleManagement = () => {
                     onChange={(e) => handleInputChange('description', e.target.value)}
                     error={!!errors.description}
                     helperText={errors.description}
-                    disabled={editingRole?.isSystem}
+                    disabled
                     placeholder="Describe the purpose and responsibilities of this role"
                   />
                 </Grid>
@@ -555,7 +439,7 @@ const RoleManagement = () => {
                 Page Access Permissions
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Select which admin pages users with this role can access
+                {viewMode ? 'Selected permissions for this role' : 'Select which pages users with this role can access'}
               </Typography>
 
               {errors.permissions && (
@@ -564,67 +448,103 @@ const RoleManagement = () => {
                 </Alert>
               )}
 
-              <Paper variant="outlined" sx={{ p: 2 }}>
-                <FormGroup>
-                  {pagePermissions.map((page, index) => (
-                    <Box key={page.key}>
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={formData.permissions[page.key]}
-                            onChange={(e) => handlePermissionChange(page.key, e.target.checked)}
-                            disabled={editingRole?.isSystem}
-                          />
-                        }
-                        label={
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            {page.icon}
-                            <Box>
-                              <Typography variant="body1">{page.label}</Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {page.description}
-                              </Typography>
+              {/* Basic Permissions */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold', mb: 1 }}>
+                  Basic Permissions
+                </Typography>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <FormGroup>
+                    {pagePermissions.slice(0, 6).map((page, index) => (
+                      <Box key={page.id}>
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={formData.permissionIds.includes(page.id)}
+                              onChange={(e) => handlePermissionChange(page.id, e.target.checked)}
+                              disabled={viewMode}
+                            />
+                          }
+                          label={
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              {page.icon}
+                              <Box>
+                                <Typography variant="body1">{page.label}</Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {page.description}
+                                </Typography>
+                              </Box>
                             </Box>
-                          </Box>
-                        }
-                      />
-                      {index < pagePermissions.length - 1 && <Divider sx={{ my: 1 }} />}
-                    </Box>
-                  ))}
-                </FormGroup>
-              </Paper>
+                          }
+                        />
+                        {index < 5 && <Divider sx={{ my: 1 }} />}
+                      </Box>
+                    ))}
+                  </FormGroup>
+                </Paper>
+              </Box>
 
-              {!editingRole?.isSystem && (
+              {/* Admin Permissions */}
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold', mb: 1 }}>
+                  Admin Permissions
+                </Typography>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <FormGroup>
+                    {pagePermissions.slice(6).map((page, index) => (
+                      <Box key={page.id}>
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={formData.permissionIds.includes(page.id)}
+                              onChange={(e) => handlePermissionChange(page.id, e.target.checked)}
+                              disabled={viewMode}
+                            />
+                          }
+                          label={
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              {page.icon}
+                              <Box>
+                                <Typography variant="body1">{page.label}</Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {page.description}
+                                </Typography>
+                              </Box>
+                            </Box>
+                          }
+                        />
+                        {index < pagePermissions.slice(6).length - 1 && <Divider sx={{ my: 1 }} />}
+                      </Box>
+                    ))}
+                  </FormGroup>
+                </Paper>
+              </Box>
+
+              {!viewMode && (
                 <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
                   <Button
                     variant="outlined"
                     size="small"
                     onClick={() => {
-                      const allChecked = Object.values(formData.permissions).every((v) => v);
-                      const newPermissions = {};
-                      Object.keys(formData.permissions).forEach((key) => {
-                        newPermissions[key] = !allChecked;
-                      });
-                      setFormData((prev) => ({ ...prev, permissions: newPermissions }));
+                      const allChecked = formData.permissionIds.length === pagePermissions.length;
+                      const newPermissionIds = allChecked
+                        ? []
+                        : pagePermissions.map((p) => p.id);
+                      setFormData((prev) => ({ ...prev, permissionIds: newPermissionIds }));
                     }}
                   >
-                    {Object.values(formData.permissions).every((v) => v) ? 'Uncheck All' : 'Check All'}
+                    {formData.permissionIds.length === pagePermissions.length ? 'Uncheck All' : 'Check All'}
                   </Button>
                 </Box>
               )}
 
-              {editingRole?.isSystem && (
-                <Alert severity="info" sx={{ mt: 2 }}>
-                  System roles cannot be modified. They are managed by the application.
-                </Alert>
-              )}
             </Box>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>
             <Button onClick={handleCloseDialog} startIcon={<Cancel />}>
-              {editingRole?.isSystem ? 'Close' : 'Cancel'}
+              {viewMode ? 'Close' : 'Cancel'}
             </Button>
-            {!editingRole?.isSystem && (
+            {!viewMode && (
               <Button
                 onClick={handleSave}
                 variant="contained"
@@ -635,6 +555,22 @@ const RoleManagement = () => {
             )}
           </DialogActions>
         </Dialog>
+
+        {/* Snackbar for notifications */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <Alert
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+            severity={snackbar.severity}
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Box>
     </AdminLayout>
   );
