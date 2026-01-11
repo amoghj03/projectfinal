@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -21,6 +21,8 @@ import {
   Alert,
   Chip,
   InputAdornment,
+  CircularProgress,
+  Snackbar,
 } from '@mui/material';
 import {
   Business,
@@ -31,10 +33,12 @@ import {
   Email,
   CalendarToday,
   AttachMoney,
+  Save,
 } from '@mui/icons-material';
 import { AdminLayout } from './AdminDashboard';
 import { useBranch } from '../../contexts/BranchContext';
 import { useReactToPrint } from 'react-to-print';
+import payslipService from '../../services/payslipService';
 
 const PayslipGeneration = () => {
   const { getEffectiveBranch, isSuperAdmin } = useBranch();
@@ -42,9 +46,14 @@ const PayslipGeneration = () => {
   
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [payslipGenerated, setPayslipGenerated] = useState(false);
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [alert, setAlert] = useState({ open: false, message: '', severity: 'success' });
   
   // Editable payslip fields
   const [payslipData, setPayslipData] = useState({
+    id: 0,
     employeeId: '',
     employeeName: '',
     designation: '',
@@ -54,7 +63,7 @@ const PayslipGeneration = () => {
     payPeriod: new Date().toISOString().slice(0, 7), // YYYY-MM format
     payDate: new Date().toISOString().split('T')[0],
     basicSalary: 0,
-    hra: 0, // House Rent Allowance
+    hra: 0,
     transportAllowance: 0,
     medicalAllowance: 0,
     specialAllowance: 0,
@@ -71,103 +80,59 @@ const PayslipGeneration = () => {
     paidLeaves: 0,
   });
 
-  // Mock employee data - In real app, this would come from backend
-  const employees = [
-    {
-      employeeId: 'EMP001',
-      fullName: 'John Doe',
-      email: 'john.doe@securebank.com',
-      department: 'Customer Service',
-      branch: 'Main Branch',
-      role: 'Employee',
-      salary: 45000,
-      accountNumber: '1234567890',
-    },
-    {
-      employeeId: 'EMP002',
-      fullName: 'Jane Smith',
-      email: 'jane.smith@securebank.com',
-      department: 'IT Support',
-      branch: 'Tech Center',
-      role: 'Manager',
-      salary: 65000,
-      accountNumber: '2345678901',
-    },
-    {
-      employeeId: 'EMP003',
-      fullName: 'Mike Johnson',
-      email: 'mike.johnson@securebank.com',
-      department: 'Accounts',
-      branch: 'Downtown Branch',
-      role: 'Employee',
-      salary: 48000,
-      accountNumber: '3456789012',
-    },
-    {
-      employeeId: 'EMP004',
-      fullName: 'Sarah Wilson',
-      email: 'sarah.wilson@securebank.com',
-      department: 'HR',
-      branch: 'Main Branch',
-      role: 'HR',
-      salary: 58000,
-      accountNumber: '4567890123',
-    },
-    {
-      employeeId: 'EMP005',
-      fullName: 'David Brown',
-      email: 'david.brown@securebank.com',
-      department: 'Security',
-      branch: 'Main Branch',
-      role: 'Admin',
-      salary: 72000,
-      accountNumber: '5678901234',
-    },
-  ];
+  const fetchEmployees = async () => {
+    try {
+      setLoading(true);
+      const currentBranch = getEffectiveBranch();
+      const branch = currentBranch === 'All Branches' ? null : currentBranch;
+      const response = await payslipService.getEmployeesForPayslip(branch);
+      
+      if (response.success) {
+        setEmployees(response.data);
+      } else {
+        setAlert({ open: true, message: response.message || 'Failed to fetch employees', severity: 'error' });
+      }
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+      setAlert({ open: true, message: 'Failed to fetch employees', severity: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Filter employees based on branch
-  const filteredEmployees = employees.filter(emp => {
-    const currentBranch = getEffectiveBranch();
-    return isSuperAdmin && currentBranch === 'All Branches' 
-      ? true 
-      : emp.branch === currentBranch;
-  });
+  // Fetch employees on mount
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
 
   const handleEmployeeChange = (employeeId) => {
     setSelectedEmployee(employeeId);
-    const employee = employees.find(emp => emp.employeeId === employeeId);
+    const employee = employees.find(emp => emp.id === employeeId);
     
     if (employee) {
-      const monthlySalary = employee.salary / 12;
-      const basicSalary = monthlySalary * 0.5; // 50% of salary
-      const hra = monthlySalary * 0.2; // 20% of salary
-      const transportAllowance = monthlySalary * 0.1; // 10% of salary
-      const medicalAllowance = monthlySalary * 0.1; // 10% of salary
-      const specialAllowance = monthlySalary * 0.1; // 10% of salary
-      
-      const providentFund = basicSalary * 0.12; // 12% of basic
-      const professionalTax = 200; // Fixed amount
-      const incomeTax = monthlySalary * 0.1; // 10% tax (simplified)
-
+      // Only salary comes from backend, rest are zero and editable
       setPayslipData({
         ...payslipData,
+        id: employee.id,
         employeeId: employee.employeeId,
         employeeName: employee.fullName,
-        designation: employee.role,
+        designation: employee.jobRole || 'Employee',
         department: employee.department,
         branch: employee.branch,
         email: employee.email,
-        basicSalary: parseFloat(basicSalary.toFixed(2)),
-        hra: parseFloat(hra.toFixed(2)),
-        transportAllowance: parseFloat(transportAllowance.toFixed(2)),
-        medicalAllowance: parseFloat(medicalAllowance.toFixed(2)),
-        specialAllowance: parseFloat(specialAllowance.toFixed(2)),
-        providentFund: parseFloat(providentFund.toFixed(2)),
-        professionalTax: professionalTax,
-        incomeTax: parseFloat(incomeTax.toFixed(2)),
-        accountNumber: employee.accountNumber,
-        workingDays: 22,
-        presentDays: 22,
+        basicSalary: parseFloat(employee.salary || 0),
+        hra: 0,
+        transportAllowance: 0,
+        medicalAllowance: 0,
+        specialAllowance: 0,
+        otherEarnings: 0,
+        providentFund: 0,
+        professionalTax: 0,
+        incomeTax: 0,
+        otherDeductions: 0,
+        accountNumber: '',
+        workingDays: 0,
+        presentDays: 0,
         absentDays: 0,
         paidLeaves: 0,
       });
@@ -182,20 +147,60 @@ const PayslipGeneration = () => {
     });
   };
 
+  const handleSavePayslip = async () => {
+    try {
+      setSaving(true);
+      
+      // Parse month and year from payPeriod
+      const [year, month] = payslipData.payPeriod.split('-');
+      
+      const payslipRequest = {
+        employeeId: payslipData.id,
+        month: parseInt(month),
+        year: parseInt(year),
+        basicSalary: parseFloat(payslipData.basicSalary) || 0,
+        hra: parseFloat(payslipData.hra) || 0,
+        transportAllowance: parseFloat(payslipData.transportAllowance) || 0,
+        medicalAllowance: parseFloat(payslipData.medicalAllowance) || 0,
+        specialAllowance: parseFloat(payslipData.specialAllowance) || 0,
+        otherEarnings: parseFloat(payslipData.otherEarnings) || 0,
+        providentFund: parseFloat(payslipData.providentFund) || 0,
+        professionalTax: parseFloat(payslipData.professionalTax) || 0,
+        incomeTax: parseFloat(payslipData.incomeTax) || 0,
+        otherDeductions: parseFloat(payslipData.otherDeductions) || 0,
+        workingDays: parseInt(payslipData.workingDays) || 0,
+        presentDays: parseInt(payslipData.presentDays) || 0,
+      };
+
+      const response = await payslipService.generatePayslip(payslipRequest);
+      
+      if (response.success) {
+        setAlert({ open: true, message: 'Payslip generated successfully!', severity: 'success' });
+      } else {
+        setAlert({ open: true, message: response.message || 'Failed to generate payslip', severity: 'error' });
+      }
+    } catch (error) {
+      console.error('Error generating payslip:', error);
+      setAlert({ open: true, message: error.response?.data?.message || 'Failed to generate payslip', severity: 'error' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // Calculate totals
   const grossEarnings = 
-    parseFloat(payslipData.basicSalary) +
-    parseFloat(payslipData.hra) +
-    parseFloat(payslipData.transportAllowance) +
-    parseFloat(payslipData.medicalAllowance) +
-    parseFloat(payslipData.specialAllowance) +
-    parseFloat(payslipData.otherEarnings);
+    parseFloat(payslipData.basicSalary || 0) +
+    parseFloat(payslipData.hra || 0) +
+    parseFloat(payslipData.transportAllowance || 0) +
+    parseFloat(payslipData.medicalAllowance || 0) +
+    parseFloat(payslipData.specialAllowance || 0) +
+    parseFloat(payslipData.otherEarnings || 0);
 
   const totalDeductions = 
-    parseFloat(payslipData.providentFund) +
-    parseFloat(payslipData.professionalTax) +
-    parseFloat(payslipData.incomeTax) +
-    parseFloat(payslipData.otherDeductions);
+    parseFloat(payslipData.providentFund || 0) +
+    parseFloat(payslipData.professionalTax || 0) +
+    parseFloat(payslipData.incomeTax || 0) +
+    parseFloat(payslipData.otherDeductions || 0);
 
   const netPay = grossEarnings - totalDeductions;
 
@@ -387,17 +392,23 @@ const PayslipGeneration = () => {
                 value={selectedEmployee}
                 onChange={(e) => handleEmployeeChange(e.target.value)}
                 label="Employee"
+                disabled={loading}
               >
                 <MenuItem value="">
                   <em>Select an employee</em>
                 </MenuItem>
-                {filteredEmployees.map((emp) => (
-                  <MenuItem key={emp.employeeId} value={emp.employeeId}>
+                {employees.map((emp) => (
+                  <MenuItem key={emp.id} value={emp.id}>
                     {emp.employeeId} - {emp.fullName} ({emp.department})
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
+            {loading && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                <CircularProgress size={24} />
+              </Box>
+            )}
           </CardContent>
         </Card>
 
@@ -732,6 +743,16 @@ const PayslipGeneration = () => {
             {/* Action Buttons */}
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mb: 3 }}>
               <Button
+                variant="contained"
+                color="success"
+                startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <Save />}
+                onClick={handleSavePayslip}
+                disabled={saving}
+                size="large"
+              >
+                {saving ? 'Saving...' : 'Save Payslip'}
+              </Button>
+              <Button
                 variant="outlined"
                 startIcon={<PictureAsPdf />}
                 onClick={handlePrint}
@@ -763,6 +784,22 @@ const PayslipGeneration = () => {
             Please select an employee to generate their payslip.
           </Alert>
         )}
+
+        {/* Alert Snackbar */}
+        <Snackbar
+          open={alert.open}
+          autoHideDuration={6000}
+          onClose={() => setAlert({ ...alert, open: false })}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <Alert
+            onClose={() => setAlert({ ...alert, open: false })}
+            severity={alert.severity}
+            sx={{ width: '100%' }}
+          >
+            {alert.message}
+          </Alert>
+        </Snackbar>
       </Box>
     </AdminLayout>
   );

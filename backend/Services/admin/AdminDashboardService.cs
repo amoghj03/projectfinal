@@ -69,11 +69,11 @@ namespace BankAPI.Services.Admin
                 ? Math.Round((decimal)monthAttendance.Count(a => a.Status == "Present") / monthAttendance.Count * 100, 1)
                 : 0;
 
-            // Get open complaints
+            // Get open complaints (only "Open" status, not "In Progress")
             var openComplaints = await _context.Complaints
                 .Where(c => c.TenantId == tenantId &&
                            employeeIds.Contains(c.EmployeeId) &&
-                           c.Status != "Resolved" && c.Status != "Closed")
+                           c.Status == "Open")
                 .CountAsync();
 
             // Get pending tech issues
