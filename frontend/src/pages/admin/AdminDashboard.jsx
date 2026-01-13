@@ -84,7 +84,7 @@ const AdminLayout = ({ children }) => {
   const allMenuItems = [
     { text: 'Admin Dashboard', icon: <DashboardIcon />, path: '/admin/dashboard', permission: 'dashboard' },
     { text: 'Employee Management', icon: <People />, path: '/admin/employee-management', permission: 'employeeManagement' },
-    { text: 'Role Management', icon: <AdminPanelSettings />, path: '/admin/role-management', permission: 'employeeManagement' },
+    { text: 'Role Management', icon: <AdminPanelSettings />, path: '/admin/role-management', permission: 'roleManagement' },
     { text: 'Leave Management', icon: <Assignment />, path: '/admin/leave-management', permission: 'leaveManagement' },
     { text: 'Attendance Management', icon: <Assignment />, path: '/admin/attendance', permission: 'attendance' },
     { text: 'Payslip Generation', icon: <Receipt />, path: '/admin/payslip', permission: 'payslip' },

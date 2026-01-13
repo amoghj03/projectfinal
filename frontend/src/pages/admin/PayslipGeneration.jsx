@@ -274,27 +274,27 @@ const PayslipGeneration = () => {
               <TableBody>
                 <TableRow>
                   <TableCell>Basic Salary</TableCell>
-                  <TableCell align="right">₹{payslipData.basicSalary.toFixed(2)}</TableCell>
+                  <TableCell align="right">₹{parseFloat(payslipData.basicSalary || 0).toFixed(2)}</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell>House Rent Allowance</TableCell>
-                  <TableCell align="right">₹{payslipData.hra.toFixed(2)}</TableCell>
+                  <TableCell align="right">₹{parseFloat(payslipData.hra || 0).toFixed(2)}</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell>Transport Allowance</TableCell>
-                  <TableCell align="right">₹{payslipData.transportAllowance.toFixed(2)}</TableCell>
+                  <TableCell align="right">₹{parseFloat(payslipData.transportAllowance || 0).toFixed(2)}</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell>Medical Allowance</TableCell>
-                  <TableCell align="right">₹{payslipData.medicalAllowance.toFixed(2)}</TableCell>
+                  <TableCell align="right">₹{parseFloat(payslipData.medicalAllowance || 0).toFixed(2)}</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell>Special Allowance</TableCell>
-                  <TableCell align="right">₹{payslipData.specialAllowance.toFixed(2)}</TableCell>
+                  <TableCell align="right">₹{parseFloat(payslipData.specialAllowance || 0).toFixed(2)}</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell>Other Earnings</TableCell>
-                  <TableCell align="right">₹{payslipData.otherEarnings.toFixed(2)}</TableCell>
+                  <TableCell align="right">₹{parseFloat(payslipData.otherEarnings || 0).toFixed(2)}</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 'bold' }}>Gross Earnings</TableCell>
@@ -312,19 +312,19 @@ const PayslipGeneration = () => {
               <TableBody>
                 <TableRow>
                   <TableCell>Provident Fund (PF)</TableCell>
-                  <TableCell align="right">₹{payslipData.providentFund.toFixed(2)}</TableCell>
+                  <TableCell align="right">₹{parseFloat(payslipData.providentFund || 0).toFixed(2)}</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell>Professional Tax</TableCell>
-                  <TableCell align="right">₹{payslipData.professionalTax.toFixed(2)}</TableCell>
+                  <TableCell align="right">₹{parseFloat(payslipData.professionalTax || 0).toFixed(2)}</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell>Income Tax (TDS)</TableCell>
-                  <TableCell align="right">₹{payslipData.incomeTax.toFixed(2)}</TableCell>
+                  <TableCell align="right">₹{parseFloat(payslipData.incomeTax || 0).toFixed(2)}</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell>Other Deductions</TableCell>
-                  <TableCell align="right">₹{payslipData.otherDeductions.toFixed(2)}</TableCell>
+                  <TableCell align="right">₹{parseFloat(payslipData.otherDeductions || 0).toFixed(2)}</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 'bold' }}>Total Deductions</TableCell>

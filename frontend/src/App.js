@@ -196,7 +196,7 @@ function  App() {
           <Route 
             path="/admin/role-management" 
             element={
-              <AdminProtectedRoute requiredPermission="employeeManagement">
+              <AdminProtectedRoute requiredPermission="roleManagement">
                 <RoleManagement />
               </AdminProtectedRoute>
             } 

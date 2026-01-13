@@ -25,6 +25,7 @@
     "@mui/material": "^5.11.10",
     "@mui/x-data-grid": "^5.17.24",
     "@mui/x-date-pickers": "^5.0.20",
+    "axios": "^1.13.2",
     "dayjs": "^1.11.7",
     "file-saver": "^2.0.5",
     "react": "^18.2.0",

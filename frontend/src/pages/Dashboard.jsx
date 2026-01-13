@@ -308,10 +308,24 @@ const Dashboard = () => {
     setSnackbar({ ...snackbar, open: false });
   };
 
+  // Get employee permissions for filtering
+  const getEmployeePermissionsForCards = () => {
+    try {
+      const permissions = localStorage.getItem('employeePermissions');
+      return permissions ? JSON.parse(permissions) : {};
+    } catch {
+      return {};
+    }
+  };
+
   // Map API data to analytics cards
   const getAnalyticsCards = () => {
+    // Get employee permissions
+    const permissions = getEmployeePermissionsForCards();
+    const hasSkillPermission = permissions.skillManagement === true;
+    
     if (!dashboardStats) {
-      return [
+      const cards = [
         {
           title: 'Attendance Rate',
           value: '0%',
@@ -324,16 +338,22 @@ const Dashboard = () => {
           icon: <Assignment />,
           color: 'primary',
         },
-        {
+      ];
+      
+      // Only add skill score if user has permission
+      if (hasSkillPermission) {
+        cards.push({
           title: 'Skill Score',
           value: '0/10',
           icon: <Stars />,
           color: 'warning',
-        },
-      ];
+        });
+      }
+      
+      return cards;
     }
 
-    return [
+    const cards = [
       {
         title: 'Attendance Rate',
         value: `${dashboardStats.attendanceStats.attendanceRate}%`,
@@ -346,26 +366,22 @@ const Dashboard = () => {
         icon: <Assignment />,
         color: 'primary',
       },
-      {
+    ];
+    
+    // Only add skill score if user has permission
+    if (hasSkillPermission) {
+      cards.push({
         title: 'Skill Score',
         value: `${dashboardStats.skillStats.averageScore}/10`,
         icon: <Stars />,
         color: 'warning',
-      },
-    ];
+      });
+    }
+    
+    return cards;
   };
 
   const analyticsCards = getAnalyticsCards();
-
-  // Get employee permissions for filtering
-  const getEmployeePermissionsForCards = () => {
-    try {
-      const permissions = localStorage.getItem('employeePermissions');
-      return permissions ? JSON.parse(permissions) : {};
-    } catch {
-      return {};
-    }
-  };
 
   const cardPermissions = getEmployeePermissionsForCards();
 
@@ -472,7 +488,7 @@ const Dashboard = () => {
         {/* Analytics Widgets */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           {analyticsCards.map((card, index) => (
-            <Grid item xs={12} sm={6} md={4} key={index}>
+            <Grid item xs={12} sm={6} md={analyticsCards.length === 2 ? 6 : 4} key={index}>
               <Card>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -498,7 +514,7 @@ const Dashboard = () => {
         </Typography>
         <Grid container spacing={3}>
           {quickAccessCards.map((card, index) => (
-            <Grid item xs={12} sm={6} md={4} key={index}>
+            <Grid item xs={12} sm={6} md={quickAccessCards.length <= 2 ? 6 : 4} key={index}>
               <Card
                 sx={{
                   cursor: 'pointer',

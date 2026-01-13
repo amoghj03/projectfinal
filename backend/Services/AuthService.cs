@@ -101,19 +101,14 @@ public class AuthService : IAuthService
                 // Map permissions to frontend permission keys
                 adminPermissions["dashboard"] = allPermissions.Any(p => p.Name.Contains("dashboard"));
                 adminPermissions["employeeManagement"] = allPermissions.Any(p => p.Name.Contains("employee.manage"));
+                adminPermissions["roleManagement"] = allPermissions.Any(p => p.Name == "role.manage");
                 adminPermissions["attendance"] = allPermissions.Any(p => p.Name.Contains("attendance"));
                 adminPermissions["leaveManagement"] = allPermissions.Any(p => p.Name.Contains("leave.approve"));
-                adminPermissions["skillReports"] = allPermissions.Any(p => p.Name.Contains("skill") || p.Name.Contains("report"));
+                adminPermissions["skillReports"] = allPermissions.Any(p => p.Name == "skill.report.view");
                 adminPermissions["complaints"] = allPermissions.Any(p => p.Name.Contains("complaint"));
                 adminPermissions["techIssues"] = allPermissions.Any(p => p.Name.Contains("tech") || p.Name.Contains("issue"));
-                adminPermissions["reports"] = allPermissions.Any(p => p.Name.Contains("report"));
-                adminPermissions["payslip"] = allPermissions.Any(p => p.Name.Contains("payslip") || p.Name.Contains("payroll"));
-
-                // Super admin gets all permissions
-                if (adminRole == "superadmin")
-                {
-                    adminPermissions = adminPermissions.ToDictionary(k => k.Key, v => true);
-                }
+                adminPermissions["reports"] = allPermissions.Any(p => p.Name == "report.download");
+                adminPermissions["payslip"] = allPermissions.Any(p => p.Name.Contains("payslip") || p.Name == "payslip.generate");
             }
 
             // Build permissions dictionary for employee
