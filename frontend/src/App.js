@@ -26,6 +26,7 @@ import ComplaintsOverview from './pages/admin/ComplaintsOverview';
 import TechIssuesManagement from './pages/admin/TechIssuesManagement';
 import ReportsDownload from './pages/admin/ReportsDownload';
 import PayslipGeneration from './pages/admin/PayslipGeneration';
+import TenantOnboarding from './pages/admin/TenantOnboarding';
 
 // Protected Route Components
 const EmployeeProtectedRoute = ({ children, requiredPermission }) => {
@@ -261,6 +262,15 @@ function  App() {
             element={
               <AdminProtectedRoute requiredPermission="payslip">
                 <PayslipGeneration />
+              </AdminProtectedRoute>
+            } 
+          />
+          
+          <Route 
+            path="/admin/tenant-onboarding" 
+            element={
+              <AdminProtectedRoute requiredPermission="tenantOnboarding">
+                <TenantOnboarding />
               </AdminProtectedRoute>
             } 
           />

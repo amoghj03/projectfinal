@@ -22,4 +22,5 @@ public class UserData
     public Dictionary<string, bool>? AdminPermissions { get; set; }
     public Dictionary<string, bool>? EmployeePermissions { get; set; }
     public long TenantId { get; set; }
+    public string TenantName { get; set; } = string.Empty;
 }

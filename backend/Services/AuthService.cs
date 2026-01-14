@@ -109,6 +109,7 @@ public class AuthService : IAuthService
                 adminPermissions["techIssues"] = allPermissions.Any(p => p.Name.Contains("tech") || p.Name.Contains("issue"));
                 adminPermissions["reports"] = allPermissions.Any(p => p.Name == "report.download");
                 adminPermissions["payslip"] = allPermissions.Any(p => p.Name.Contains("payslip") || p.Name == "payslip.generate");
+                adminPermissions["tenantOnboarding"] = allPermissions.Any(p => p.Name == "tenantOnboarding");
             }
 
             // Build permissions dictionary for employee
@@ -143,7 +144,8 @@ public class AuthService : IAuthService
                     AdminRole = adminRole,
                     AdminPermissions = hasAdminAccess ? adminPermissions : null,
                     EmployeePermissions = employeePermissions,
-                    TenantId = user.TenantId
+                    TenantId = user.TenantId,
+                    TenantName = user.Tenant?.Name ?? "Organization"
                 }
             };
         }
