@@ -386,14 +386,6 @@ const EmployeeManagement = () => {
               )}
             </Box>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={() => navigate('/admin/employee-management/add')}
-            sx={{ background: 'linear-gradient(135deg, #64B5F6, #42A5F5)' }}
-          >
-            Add New Employee
-          </Button>
         </Box>
 
         {/* Active/Inactive Toggle */}

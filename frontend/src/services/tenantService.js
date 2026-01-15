@@ -92,6 +92,42 @@ class TenantService {
       throw new Error(message);
     }
   }
+
+  /**
+   * Add a branch to an existing tenant
+   * @param {number} tenantId - The tenant ID
+   * @param {Object} branchData - Branch data
+   * @returns {Promise<Object>} Created branch
+   */
+  async addBranchToTenant(tenantId, branchData) {
+    try {
+      const response = await axiosInstance.post(`/admin/AdminTenant/${tenantId}/branches`, {
+        ...branchData,
+        tenantId: tenantId,
+        isActive: true,
+      });
+      return response.data;
+    } catch (error) {
+      const message = error.response?.data?.message || error.message || 'Failed to add branch';
+      throw new Error(message);
+    }
+  }
+
+  /**
+   * Add an employee to an existing tenant
+   * @param {number} tenantId - The tenant ID
+   * @param {Object} employeeData - Employee data
+   * @returns {Promise<Object>} Created employee
+   */
+  async addEmployeeToTenant(tenantId, employeeData) {
+    try {
+      const response = await axiosInstance.post(`/admin/AdminTenant/${tenantId}/employees`, employeeData);
+      return response.data;
+    } catch (error) {
+      const message = error.response?.data?.message || error.message || 'Failed to add employee';
+      throw new Error(message);
+    }
+  }
 }
 
 const tenantService = new TenantService();

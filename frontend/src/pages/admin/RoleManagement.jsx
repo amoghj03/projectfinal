@@ -241,14 +241,6 @@ const RoleManagement = () => {
                 Create and manage roles with specific page access permissions
               </Typography>
             </Box>
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              onClick={() => handleOpenDialog()}
-              disabled
-            >
-              Create New Role
-            </Button>
           </Box>
         </Box>
 

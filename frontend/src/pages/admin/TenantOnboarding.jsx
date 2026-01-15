@@ -32,6 +32,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import {
   Add,
@@ -45,7 +47,10 @@ import {
   ExpandMore,
   Apartment,
 } from '@mui/icons-material';
+import { AdminLayout } from './AdminDashboard';
 import tenantService from '../../services/tenantService';
+import branchService from '../../services/branchService';
+import adminEmployeeService from '../../services/adminEmployeeService';
 
 const steps = [
   'Tenant Information',
@@ -57,6 +62,7 @@ const steps = [
 ];
 
 const TenantOnboarding = () => {
+  const [tabValue, setTabValue] = useState(0);
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -64,6 +70,42 @@ const TenantOnboarding = () => {
   const [permissions, setPermissions] = useState([]);
   const [slugAvailable, setSlugAvailable] = useState(true);
   const [checkingSlug, setCheckingSlug] = useState(false);
+  
+  // Branch addition states
+  const [tenants, setTenants] = useState([]);
+  const [loadingTenants, setLoadingTenants] = useState(false);
+  const [selectedTenant, setSelectedTenant] = useState(null);
+  const [newBranchData, setNewBranchData] = useState({
+    name: '',
+    code: '',
+    address: '',
+    city: '',
+    state: '',
+    country: '',
+    phone: '',
+    email: '',
+  });
+
+  // Employee addition states
+  const [employeeBranches, setEmployeeBranches] = useState([]);
+  const [loadingBranches, setLoadingBranches] = useState(false);
+  const [availableRoles, setAvailableRoles] = useState([]);
+  const [loadingRoles, setLoadingRoles] = useState(false);
+  const [employeeForm, setEmployeeForm] = useState({
+    tenant: null,
+    branchId: '',
+    employeeId: '',
+    fullName: '',
+    email: '',
+    phone: '',
+    gender: '',
+    dateOfBirth: '',
+    jobRole: 'Employee',
+    status: 'Active',
+    salary: '',
+    joinDate: new Date().toISOString().split('T')[0],
+    roles: [],
+  });
 
   // Form data state
   const [formData, setFormData] = useState({
@@ -164,6 +206,8 @@ const TenantOnboarding = () => {
 
   useEffect(() => {
     fetchPermissions();
+    fetchTenants();
+    fetchAvailableRoles();
   }, []);
 
   const fetchPermissions = async () => {
@@ -172,6 +216,53 @@ const TenantOnboarding = () => {
       setPermissions(data);
     } catch (error) {
       console.error('Error fetching permissions:', error);
+    }
+  };
+
+  const fetchTenants = async () => {
+    console.log('Fetching tenants...');
+    setLoadingTenants(true);
+    try {
+      const data = await tenantService.getAllTenants();
+      console.log('Tenants fetched:', data);
+      setTenants(data || []);
+    } catch (error) {
+      console.error('Error fetching tenants:', error);
+      setError('Failed to load tenants. Please refresh the page.');
+      setTenants([]);
+    } finally {
+      setLoadingTenants(false);
+    }
+  };
+
+  const fetchAvailableRoles = async () => {
+    setLoadingRoles(true);
+    try {
+      const roles = await adminEmployeeService.getAvailableRoles();
+      setAvailableRoles(roles || []);
+    } catch (error) {
+      console.error('Error fetching roles:', error);
+    } finally {
+      setLoadingRoles(false);
+    }
+  };
+
+  const loadBranchesForTenant = async (tenant) => {
+    if (!tenant) {
+      setEmployeeBranches([]);
+      return;
+    }
+
+    setLoadingBranches(true);
+    try {
+      const branches = await branchService.getBranchesByTenant(tenant.id);
+      setEmployeeBranches(branches || []);
+    } catch (error) {
+      console.error('Error fetching branches for tenant:', error);
+      setError('Failed to load branches for selected tenant');
+      setEmployeeBranches([]);
+    } finally {
+      setLoadingBranches(false);
     }
   };
 
@@ -331,7 +422,6 @@ const TenantOnboarding = () => {
           country: '',
           phone: '',
           email: '',
-          isHeadOffice: false,
         }
       ]
     });
@@ -351,6 +441,92 @@ const TenantOnboarding = () => {
       ...formData,
       branches: newBranches,
     });
+  };
+
+  const handleEmployeeTenantChange = (tenant) => {
+    setSelectedTenant(tenant);
+    setEmployeeForm((prev) => ({
+      ...prev,
+      tenant,
+      branchId: '',
+    }));
+    loadBranchesForTenant(tenant);
+  };
+
+  const handleEmployeeFormChange = (field, value) => {
+    setEmployeeForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleEmployeeRoleToggle = (roleName) => {
+    setEmployeeForm((prev) => {
+      const isAssigned = prev.roles.includes(roleName);
+      return {
+        ...prev,
+        roles: isAssigned ? [] : [roleName],
+      };
+    });
+  };
+
+  const handleAddEmployeeToTenant = async () => {
+    if (!employeeForm.tenant) {
+      setError('Please select a tenant');
+      return;
+    }
+    if (!employeeForm.branchId) {
+      setError('Please select a branch');
+      return;
+    }
+    if (!employeeForm.fullName || !employeeForm.email) {
+      setError('Full name and email are required');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const payload = {
+        employeeId: employeeForm.employeeId,
+        fullName: employeeForm.fullName,
+        email: employeeForm.email,
+        phone: employeeForm.phone,
+        gender: employeeForm.gender,
+        dateOfBirth: employeeForm.dateOfBirth || null,
+        jobRole: employeeForm.jobRole || 'Employee',
+        status: employeeForm.status || 'Active',
+        salary: employeeForm.salary || null,
+        branchId: Number(employeeForm.branchId),
+        joinDate: employeeForm.joinDate || new Date().toISOString().split('T')[0],
+        roles: employeeForm.roles,
+      };
+
+      await tenantService.addEmployeeToTenant(employeeForm.tenant.id, payload);
+
+      setSuccess(`Employee "${employeeForm.fullName}" added to "${employeeForm.tenant.name}" successfully!`);
+
+      setEmployeeForm({
+        tenant: employeeForm.tenant,
+        branchId: '',
+        employeeId: '',
+        fullName: '',
+        email: '',
+        phone: '',
+        gender: '',
+        dateOfBirth: '',
+        jobRole: 'Employee',
+        status: 'Active',
+        salary: '',
+        joinDate: new Date().toISOString().split('T')[0],
+      });
+    } catch (error) {
+      setError(error.message || 'Failed to add employee');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const addRole = () => {
@@ -587,7 +763,6 @@ const TenantOnboarding = () => {
                   <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                     <Typography variant="subtitle1">
                       Branch {index + 1}
-                      {branch.isHeadOffice && <Chip label="Head Office" size="small" color="primary" sx={{ ml: 1 }} />}
                     </Typography>
                     {formData.branches.length > 1 && (
                       <IconButton onClick={() => removeBranch(index)} color="error">
@@ -661,17 +836,6 @@ const TenantOnboarding = () => {
                         label="Email"
                         value={branch.email}
                         onChange={(e) => handleBranchChange(index, 'email', e.target.value)}
-                      />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={branch.isHeadOffice}
-                            onChange={(e) => handleBranchChange(index, 'isHeadOffice', e.target.checked)}
-                          />
-                        }
-                        label="Head Office"
                       />
                     </Grid>
                   </Grid>
@@ -871,6 +1035,7 @@ const TenantOnboarding = () => {
                         label="Description"
                         value={role.description}
                         onChange={(e) => handleRoleChange(index, 'description', e.target.value)}
+                        disabled={role.isSystem}
                       />
                     </Grid>
                     
@@ -1219,84 +1384,532 @@ const TenantOnboarding = () => {
     }
   };
 
-  return (
-    <Box sx={{ p: 3 }}>
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h4" gutterBottom>
-          Tenant Onboarding
+  const handleNewBranchChange = (field, value) => {
+    setNewBranchData({
+      ...newBranchData,
+      [field]: value,
+    });
+  };
+
+  const handleAddBranchToTenant = async () => {
+    if (!selectedTenant) {
+      setError('Please select a tenant');
+      return;
+    }
+    if (!newBranchData.name) {
+      setError('Branch name is required');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      await tenantService.addBranchToTenant(selectedTenant.id, newBranchData);
+      setSuccess(`Branch "${newBranchData.name}" added to "${selectedTenant.name}" successfully!`);
+      
+      // Reset form
+      setNewBranchData({
+        name: '',
+        code: '',
+        address: '',
+        city: '',
+        state: '',
+        country: '',
+        phone: '',
+        email: '',
+      });
+      setSelectedTenant(null);
+    } catch (error) {
+      setError(error.message || 'Failed to add branch');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+    setError('');
+    setSuccess('');
+  };
+
+  const renderAddBranchTab = () => {
+    return (
+      <Box sx={{ mt: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          <Apartment sx={{ verticalAlign: 'middle', mr: 1 }} />
+          Add Branch to Existing Tenant
         </Typography>
-        <Typography variant="body1" color="textSecondary" gutterBottom>
-          Follow the steps below to onboard a new tenant
+        
+        <Grid container spacing={3} sx={{ mt: 2 }}>
+          <Grid item xs={12}>
+            <Autocomplete
+              options={tenants}
+              getOptionLabel={(option) => `${option.name} (${option.slug})`}
+              value={selectedTenant}
+              onChange={(event, newValue) => setSelectedTenant(newValue)}
+              loading={loadingTenants}
+              noOptionsText={loadingTenants ? "Loading tenants..." : "No tenants found"}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Select Tenant"
+                  required
+                  helperText={`Choose the tenant to add a branch to (${tenants.length} tenant${tenants.length !== 1 ? 's' : ''} available)`}
+                  InputProps={{
+                    ...params.InputProps,
+                    endAdornment: (
+                      <>
+                        {loadingTenants ? <CircularProgress color="inherit" size={20} /> : null}
+                        {params.InputProps.endAdornment}
+                      </>
+                    ),
+                  }}
+                />
+              )}
+            />
+          </Grid>
+
+          {selectedTenant && (
+            <>
+              <Grid item xs={12}>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="h6" gutterBottom>
+                  Branch Details
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  required
+                  fullWidth
+                  label="Branch Name"
+                  value={newBranchData.name}
+                  onChange={(e) => handleNewBranchChange('name', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Branch Code"
+                  value={newBranchData.code}
+                  onChange={(e) => handleNewBranchChange('code', e.target.value)}
+                  helperText="e.g., BR001"
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Address"
+                  value={newBranchData.address}
+                  onChange={(e) => handleNewBranchChange('address', e.target.value)}
+                  multiline
+                  rows={2}
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  label="City"
+                  value={newBranchData.city}
+                  onChange={(e) => handleNewBranchChange('city', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  label="State"
+                  value={newBranchData.state}
+                  onChange={(e) => handleNewBranchChange('state', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  label="Country"
+                  value={newBranchData.country}
+                  onChange={(e) => handleNewBranchChange('country', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Phone"
+                  value={newBranchData.phone}
+                  onChange={(e) => handleNewBranchChange('phone', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  type="email"
+                  label="Email"
+                  value={newBranchData.email}
+                  onChange={(e) => handleNewBranchChange('email', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                  <Button
+                    variant="contained"
+                    onClick={handleAddBranchToTenant}
+                    disabled={loading}
+                    startIcon={loading ? <CircularProgress size={20} /> : <Add />}
+                  >
+                    {loading ? 'Adding Branch...' : 'Add Branch'}
+                  </Button>
+                </Box>
+              </Grid>
+            </>
+          )}
+        </Grid>
+      </Box>
+    );
+  };
+
+  const renderAddEmployeeTab = () => {
+    return (
+      <Box sx={{ mt: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          <Person sx={{ verticalAlign: 'middle', mr: 1 }} />
+          Add Employee to Existing Tenant
         </Typography>
 
-        <Stepper activeStep={activeStep} sx={{ pt: 3, pb: 5 }}>
-          {steps.map((label) => (
-            <Step key={label}>
-              <StepLabel>{label}</StepLabel>
-            </Step>
-          ))}
-        </Stepper>
+        <Grid container spacing={3} sx={{ mt: 2 }}>
+          <Grid item xs={12} md={6}>
+            <Autocomplete
+              options={tenants}
+              getOptionLabel={(option) => `${option.name} (${option.slug})`}
+              value={employeeForm.tenant}
+              onChange={(event, newValue) => handleEmployeeTenantChange(newValue)}
+              loading={loadingTenants}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Select Tenant"
+                  required
+                  helperText="Choose the tenant to add an employee to"
+                  InputProps={{
+                    ...params.InputProps,
+                    endAdornment: (
+                      <>
+                        {loadingTenants ? <CircularProgress color="inherit" size={20} /> : null}
+                        {params.InputProps.endAdornment}
+                      </>
+                    ),
+                  }}
+                />
+              )}
+            />
+          </Grid>
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-
-        {success && (
-          <Alert severity="success" sx={{ mb: 2 }}>
-            {success}
-          </Alert>
-        )}
-
-        {activeStep === steps.length ? (
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <CheckCircle color="success" sx={{ fontSize: 60, mb: 2 }} />
-            <Typography variant="h5" gutterBottom>
-              Tenant Onboarded Successfully!
-            </Typography>
-            <Typography variant="body1" color="textSecondary">
-              Redirecting to dashboard...
-            </Typography>
-          </Box>
-        ) : (
-          <>
-            <Box sx={{ mb: 3 }}>
-              {renderStepContent(activeStep)}
-            </Box>
-
-            <Box sx={{ display: 'flex', flexDirection: 'row', pt: 2 }}>
-              <Button
-                color="inherit"
-                disabled={activeStep === 0}
-                onClick={handleBack}
-                sx={{ mr: 1 }}
+          <Grid item xs={12} md={6}>
+            <FormControl fullWidth required>
+              <InputLabel>Branch</InputLabel>
+              <Select
+                value={employeeForm.branchId}
+                label="Branch"
+                onChange={(e) => handleEmployeeFormChange('branchId', e.target.value)}
+                disabled={!employeeForm.tenant || loadingBranches}
               >
-                Back
-              </Button>
-              <Box sx={{ flex: '1 1 auto' }} />
-              {activeStep === steps.length - 1 ? (
-                <Button
-                  variant="contained"
-                  onClick={handleSubmit}
-                  disabled={loading}
-                  startIcon={loading ? <CircularProgress size={20} /> : null}
-                >
-                  {loading ? 'Onboarding...' : 'Complete Onboarding'}
-                </Button>
+                {employeeBranches.map((branch) => (
+                  <MenuItem key={branch.id} value={branch.id}>{branch.name}</MenuItem>
+                ))}
+              </Select>
+              {loadingBranches && <Typography variant="caption" color="textSecondary">Loading branches...</Typography>}
+            </FormControl>
+          </Grid>
+
+          {employeeForm.tenant && (
+            <>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  required
+                  fullWidth
+                  label="Full Name"
+                  value={employeeForm.fullName}
+                  onChange={(e) => handleEmployeeFormChange('fullName', e.target.value)}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  required
+                  fullWidth
+                  type="email"
+                  label="Email"
+                  value={employeeForm.email}
+                  onChange={(e) => handleEmployeeFormChange('email', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Phone"
+                  value={employeeForm.phone}
+                  onChange={(e) => handleEmployeeFormChange('phone', e.target.value)}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Gender</InputLabel>
+                  <Select
+                    value={employeeForm.gender}
+                    label="Gender"
+                    onChange={(e) => handleEmployeeFormChange('gender', e.target.value)}
+                  >
+                    <MenuItem value="Male">Male</MenuItem>
+                    <MenuItem value="Female">Female</MenuItem>
+                    <MenuItem value="Other">Other</MenuItem>
+                    <MenuItem value="Prefer not to say">Prefer not to say</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  type="date"
+                  label="Date of Birth"
+                  value={employeeForm.dateOfBirth}
+                  onChange={(e) => handleEmployeeFormChange('dateOfBirth', e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ max: new Date().toISOString().split('T')[0] }}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Job Role</InputLabel>
+                  <Select
+                    value={employeeForm.jobRole}
+                    label="Job Role"
+                    onChange={(e) => handleEmployeeFormChange('jobRole', e.target.value)}
+                  >
+                    <MenuItem value="Employee">Employee</MenuItem>
+                    <MenuItem value="Manager">Manager</MenuItem>
+                    <MenuItem value="Supervisor">Supervisor</MenuItem>
+                    <MenuItem value="Team Lead">Team Lead</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Salary"
+                  value={employeeForm.salary}
+                  onChange={(e) => handleEmployeeFormChange('salary', e.target.value)}
+                  InputProps={{ inputProps: { min: 0 } }}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Status</InputLabel>
+                  <Select
+                    value={employeeForm.status}
+                    label="Status"
+                    onChange={(e) => handleEmployeeFormChange('status', e.target.value)}
+                  >
+                    <MenuItem value="Active">Active</MenuItem>
+                    <MenuItem value="Inactive">Inactive</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  type="date"
+                  label="Join Date"
+                  value={employeeForm.joinDate}
+                  onChange={(e) => handleEmployeeFormChange('joinDate', e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom sx={{ mt: 1 }}>
+                  Assign Role
+                </Typography>
+                <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                  Select one role to grant admin access. Leaving empty keeps standard employee access.
+                </Typography>
+
+                <Grid container spacing={2}>
+                  {availableRoles.map((role) => {
+                    const isAssigned = (employeeForm.roles || []).includes(role.name);
+                    return (
+                      <Grid item xs={12} md={6} key={role.id}>
+                        <Paper
+                          sx={{
+                            p: 2.5,
+                            cursor: 'pointer',
+                            border: 2,
+                            borderColor: isAssigned ? 'primary.main' : 'divider',
+                            bgcolor: isAssigned ? 'primary.50' : 'background.paper',
+                            transition: 'all 0.2s',
+                            '&:hover': { borderColor: 'primary.main', boxShadow: 2 },
+                          }}
+                          onClick={() => handleEmployeeRoleToggle(role.name)}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+                            <Checkbox
+                              checked={isAssigned}
+                              onChange={() => handleEmployeeRoleToggle(role.name)}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <Box sx={{ flex: 1 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                <Security color={isAssigned ? 'primary' : 'action'} />
+                                <Typography variant="subtitle1" fontWeight={600}>{role.name}</Typography>
+                                {isAssigned && <Chip label="Assigned" size="small" color="primary" />}
+                              </Box>
+                              <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+                                {role.description}
+                              </Typography>
+                              <Typography variant="caption" color="textSecondary" display="block" gutterBottom>
+                                Access to {role.permissions.length} page(s)
+                              </Typography>
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                {role.permissions.slice(0, 4).map((perm) => (
+                                  <Chip key={perm} label={perm.replace(/([A-Z])/g, ' $1').trim()} size="small" variant="outlined" />
+                                ))}
+                                {role.permissions.length > 4 && (
+                                  <Chip label={`+${role.permissions.length - 4} more`} size="small" variant="outlined" />
+                                )}
+                              </Box>
+                            </Box>
+                          </Box>
+                        </Paper>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+
+                {(employeeForm.roles || []).length === 0 && !loadingRoles && (
+                  <Alert severity="info" sx={{ mt: 2 }}>
+                    No role selected. Employee will have standard access.
+                  </Alert>
+                )}
+              </Grid>
+
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                  <Button
+                    variant="contained"
+                    onClick={handleAddEmployeeToTenant}
+                    disabled={loading}
+                    startIcon={loading ? <CircularProgress size={20} /> : <Add />}
+                  >
+                    {loading ? 'Adding Employee...' : 'Add Employee'}
+                  </Button>
+                </Box>
+              </Grid>
+            </>
+          )}
+        </Grid>
+      </Box>
+    );
+  };
+
+  return (
+    <AdminLayout>
+      <Box>
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="h4" gutterBottom>
+            Tenant Management
+          </Typography>
+          <Typography variant="body1" color="textSecondary" gutterBottom>
+            Onboard new tenants or add branches to existing ones
+          </Typography>
+
+          <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 3 }}>
+            <Tabs value={tabValue} onChange={handleTabChange}>
+              <Tab label="Onboard New Tenant" />
+              <Tab label="Add Branch to Tenant" />
+              <Tab label="Add Employee to Tenant" />
+            </Tabs>
+          </Box>
+
+          {error && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {error}
+            </Alert>
+          )}
+
+          {success && (
+            <Alert severity="success" sx={{ mt: 2 }}>
+              {success}
+            </Alert>
+          )}
+
+          {tabValue === 0 && (
+            <Box sx={{ mt: 3 }}>
+              <Stepper activeStep={activeStep} sx={{ pt: 3, pb: 5 }}>
+                {steps.map((label) => (
+                  <Step key={label}>
+                    <StepLabel>{label}</StepLabel>
+                  </Step>
+                ))}
+              </Stepper>
+
+              {activeStep === steps.length ? (
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <CheckCircle color="success" sx={{ fontSize: 60, mb: 2 }} />
+                  <Typography variant="h5" gutterBottom>
+                    Tenant Onboarded Successfully!
+                  </Typography>
+                  <Typography variant="body1" color="textSecondary">
+                    Redirecting to dashboard...
+                  </Typography>
+                </Box>
               ) : (
-                <Button
-                  variant="contained"
-                  onClick={handleNext}
-                >
-                  Next
-                </Button>
+                <>
+                  <Box sx={{ mb: 3 }}>
+                    {renderStepContent(activeStep)}
+                  </Box>
+
+                  <Box sx={{ display: 'flex', flexDirection: 'row', pt: 2 }}>
+                    <Button
+                      color="inherit"
+                      disabled={activeStep === 0}
+                      onClick={handleBack}
+                      sx={{ mr: 1 }}
+                    >
+                      Back
+                    </Button>
+                    <Box sx={{ flex: '1 1 auto' }} />
+                    {activeStep === steps.length - 1 ? (
+                      <Button
+                        variant="contained"
+                        onClick={handleSubmit}
+                        disabled={loading}
+                        startIcon={loading ? <CircularProgress size={20} /> : null}
+                      >
+                        {loading ? 'Onboarding...' : 'Complete Onboarding'}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="contained"
+                        onClick={handleNext}
+                      >
+                        Next
+                      </Button>
+                    )}
+                  </Box>
+                </>
               )}
             </Box>
-          </>
-        )}
-      </Paper>
-    </Box>
+          )}
+
+          {tabValue === 1 && renderAddBranchTab()}
+          {tabValue === 2 && renderAddEmployeeTab()}
+        </Paper>
+      </Box>
+    </AdminLayout>
   );
 };
 

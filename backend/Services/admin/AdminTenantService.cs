@@ -341,11 +341,29 @@ public class AdminTenantService
         return !exists;
     }
 
-    public async Task<List<Tenant>> GetAllTenantsAsync()
+    public async Task<List<object>> GetAllTenantsAsync()
     {
         return await _context.Set<Tenant>()
+            .Where(t => t.IsActive)
             .OrderByDescending(t => t.CreatedAt)
-            .ToListAsync();
+            .Select(t => new
+            {
+                t.Id,
+                t.Name,
+                t.Slug,
+                t.ContactEmail,
+                t.ContactPhone,
+                t.City,
+                t.State,
+                t.Country,
+                t.SubscriptionPlan,
+                t.SubscriptionStatus,
+                t.MaxEmployees,
+                t.MaxBranches,
+                t.IsActive,
+                t.OnboardedAt
+            })
+            .ToListAsync<object>();
     }
 
     public async Task<List<Permission>> GetAllPermissionsAsync()
@@ -355,9 +373,188 @@ public class AdminTenantService
             .ToListAsync();
     }
 
+    public async Task<Branch> AddBranchToTenantAsync(long tenantId, BranchDto branchData)
+    {
+        // Validate tenant exists
+        var tenant = await _context.Set<Tenant>()
+            .FirstOrDefaultAsync(t => t.Id == tenantId && t.IsActive);
+
+        if (tenant == null)
+        {
+            throw new ArgumentException($"Tenant with ID {tenantId} not found or inactive");
+        }
+
+        // Check if branch code is unique within tenant (if provided)
+        if (!string.IsNullOrEmpty(branchData.Code))
+        {
+            var existingBranch = await _context.Set<Branch>()
+                .FirstOrDefaultAsync(b => b.TenantId == tenantId &&
+                                         b.Code.ToUpper() == branchData.Code.ToUpper() &&
+                                         b.IsActive);
+
+            if (existingBranch != null)
+            {
+                throw new ArgumentException($"Branch with code '{branchData.Code}' already exists for this tenant");
+            }
+        }
+
+        // Create the branch
+        var branch = new Branch
+        {
+            TenantId = tenantId,
+            Name = branchData.Name,
+            Code = string.IsNullOrEmpty(branchData.Code) ? GenerateBranchCode(tenant.Slug) : branchData.Code,
+            Address = branchData.Address,
+            City = branchData.City,
+            State = branchData.State,
+            Country = branchData.Country,
+            Phone = branchData.Phone,
+            Email = branchData.Email,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.Set<Branch>().Add(branch);
+        await _context.SaveChangesAsync();
+
+        // Return branch data without circular references
+        return new Branch
+        {
+            Id = branch.Id,
+            TenantId = branch.TenantId,
+            Name = branch.Name,
+            Code = branch.Code,
+            Address = branch.Address,
+            City = branch.City,
+            State = branch.State,
+            Country = branch.Country,
+            Phone = branch.Phone,
+            Email = branch.Email,
+            IsActive = branch.IsActive,
+            CreatedAt = branch.CreatedAt,
+            UpdatedAt = branch.UpdatedAt
+        };
+    }
+
+    public async Task<EmployeeDto> AddEmployeeToTenantAsync(long tenantId, TenantEmployeeCreateDto employeeData)
+    {
+        var tenant = await _context.Set<Tenant>()
+            .FirstOrDefaultAsync(t => t.Id == tenantId && t.IsActive);
+
+        if (tenant == null)
+        {
+            throw new ArgumentException($"Tenant with ID {tenantId} not found or inactive");
+        }
+
+        var branch = await _context.Set<Branch>()
+            .FirstOrDefaultAsync(b => b.Id == employeeData.BranchId && b.TenantId == tenantId && b.IsActive);
+
+        if (branch == null)
+        {
+            throw new ArgumentException("Branch not found for the selected tenant");
+        }
+
+        var totalEmployees = await _context.Set<Employee>()
+            .CountAsync(e => e.TenantId == tenantId);
+
+        var employeeId = string.IsNullOrWhiteSpace(employeeData.EmployeeId)
+            ? GenerateEmployeeId(tenant.Slug, totalEmployees + 1)
+            : employeeData.EmployeeId;
+
+        // Check if a user with the given email already exists
+        var user = await _context.Set<User>()
+            .FirstOrDefaultAsync(u => u.Email.ToLower() == employeeData.Email.ToLower() && u.TenantId == tenantId);
+
+        if (user == null)
+        {
+            // Create a new user for the employee
+            user = new User
+            {
+                TenantId = tenantId,
+                Email = employeeData.Email,
+                PasswordHash = "changeme", // Set a default or random password, or require reset
+                Role = "employee",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _context.Set<User>().Add(user);
+            await _context.SaveChangesAsync();
+        }
+
+        var employee = new Employee
+        {
+            TenantId = tenantId,
+            UserId = user.Id,
+            EmployeeId = employeeId,
+            FullName = employeeData.FullName,
+            Email = employeeData.Email,
+            Phone = employeeData.Phone,
+            Gender = employeeData.Gender,
+            DateOfBirth = employeeData.DateOfBirth,
+            Department = employeeData.Department,
+            JobRole = employeeData.JobRole ?? "Employee",
+            Status = string.IsNullOrWhiteSpace(employeeData.Status) ? "Active" : employeeData.Status,
+            JoinDate = employeeData.JoinDate ?? DateOnly.FromDateTime(DateTime.UtcNow),
+            Salary = employeeData.Salary,
+            BranchId = branch.Id,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.Employees.Add(employee);
+        await _context.SaveChangesAsync();
+
+        if (employeeData.Roles != null && employeeData.Roles.Count > 0)
+        {
+            var roles = await _context.Roles
+                .Where(r => r.TenantId == tenantId && employeeData.Roles.Contains(r.Name))
+                .ToListAsync();
+
+            foreach (var role in roles)
+            {
+                _context.EmployeeRoles.Add(new EmployeeRole
+                {
+                    EmployeeId = employee.Id,
+                    RoleId = role.Id,
+                    AssignedAt = DateTime.UtcNow
+                });
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
+        return new EmployeeDto
+        {
+            Id = employee.Id,
+            EmployeeId = employee.EmployeeId,
+            FullName = employee.FullName,
+            Email = employee.Email,
+            Phone = employee.Phone,
+            Gender = employee.Gender,
+            DateOfBirth = employee.DateOfBirth,
+            Department = employee.Department,
+            JobRole = employee.JobRole,
+            Status = employee.Status,
+            JoinDate = employee.JoinDate,
+            Salary = employee.Salary,
+            BranchName = branch.Name,
+            Roles = employeeData.Roles ?? new List<string>()
+        };
+    }
+
+    private string GenerateBranchCode(string tenantSlug)
+    {
+        var prefix = tenantSlug.ToUpper().Replace("-", "").Substring(0, Math.Min(3, tenantSlug.Length));
+        var random = new Random().Next(100, 999);
+        return $"{prefix}-BR{random}";
+    }
+
     private string GenerateEmployeeId(string tenantSlug, int sequence)
     {
-        var prefix = tenantSlug.ToUpper().Replace("-", "").Substring(0, Math.Min(4, tenantSlug.Length));
+        var cleanSlug = tenantSlug.ToUpper().Replace("-", "");
+        var prefix = cleanSlug.Length >= 2 ? cleanSlug.Substring(0, 2) : cleanSlug;
         return $"EMP-{prefix}-{sequence:D3}";
     }
 

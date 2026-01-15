@@ -130,5 +130,85 @@ namespace BankAPI.Controllers.Admin
                 return StatusCode(500, new { message = "An error occurred while retrieving permissions", error = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Add a branch to an existing tenant
+        /// </summary>
+        /// <param name="tenantId">The tenant ID</param>
+        /// <param name="branchData">Branch data</param>
+        /// <returns>Created branch</returns>
+        [HttpPost("{tenantId}/branches")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> AddBranchToTenant(long tenantId, [FromBody] BranchDto branchData)
+        {
+            try
+            {
+                var employeeId = GetEmployeeIdFromAuth();
+
+                if (employeeId == 0)
+                {
+                    return Unauthorized(new { message = "Invalid authentication token" });
+                }
+
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(new { message = "Invalid branch data", errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage) });
+                }
+
+                var branch = await _adminTenantService.AddBranchToTenantAsync(tenantId, branchData);
+                return CreatedAtAction(nameof(AddBranchToTenant), new { id = branch.Id }, branch);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while adding branch", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Add an employee to an existing tenant
+        /// </summary>
+        /// <param name="tenantId">The tenant ID</param>
+        /// <param name="employeeData">Employee data</param>
+        /// <returns>Created employee</returns>
+        [HttpPost("{tenantId}/employees")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> AddEmployeeToTenant(long tenantId, [FromBody] TenantEmployeeCreateDto employeeData)
+        {
+            try
+            {
+                var employeeId = GetEmployeeIdFromAuth();
+
+                if (employeeId == 0)
+                {
+                    return Unauthorized(new { message = "Invalid authentication token" });
+                }
+
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(new { message = "Invalid employee data", errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage) });
+                }
+
+                var result = await _adminTenantService.AddEmployeeToTenantAsync(tenantId, employeeData);
+                return CreatedAtAction(nameof(AddEmployeeToTenant), new { id = result.Id }, result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while adding employee", error = ex.Message });
+            }
+        }
     }
 }
