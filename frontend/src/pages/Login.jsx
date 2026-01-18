@@ -103,7 +103,7 @@ const Login = () => {
               <AccountBalance sx={{ fontSize: 40 }} />
             </Avatar>
             <Typography variant="h4" component="h1" gutterBottom>
-              SecureBank
+              BanciFy
             </Typography>
             <Typography variant="subtitle1" color="text.secondary">
               Employee Management Portal
@@ -120,7 +120,7 @@ const Login = () => {
 
             <TextField
               fullWidth
-              label="Email or Employee ID"
+              label="Email"
               name="email"
               type="email"
               value={formData.email}
@@ -199,7 +199,7 @@ const Login = () => {
             </Box>
           </Box>
 
-          {/* Demo Credentials */}
+          {/* Demo Credentials 
           <Box
             sx={{
               mt: 3,
@@ -216,6 +216,7 @@ const Login = () => {
               <strong>Super Admin:</strong> admin@acme.com / password123
             </Typography>
           </Box>
+          */}
         </Card>
       </Container>
     </Box>
