@@ -17,9 +17,9 @@ jobs:
       - name: Deploy Backend
         uses: webfactory/ssh-agent@v0.9.0
         with:
+          ssh-private-key: ${{ secrets.VPS_KEY }}
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_KEY }}
           script: |
             cd /root/var/repos/myapp/backend
             git pull origin Release
