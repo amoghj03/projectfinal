@@ -16,7 +16,7 @@ const roleService = {
   // Get all roles
   getAllRoles: async () => {
     try {
-      const response = await axios.get(`${API_URL}/roles`, getAuthHeaders());
+      const response = await axios.get(`${API_URL}/admin/adminrole/roles`, getAuthHeaders());
       return response.data;
     } catch (error) {
       console.error('Error fetching roles:', error);
@@ -27,7 +27,7 @@ const roleService = {
   // Get role by ID
   getRoleById: async (roleId) => {
     try {
-      const response = await axios.get(`${API_URL}/roles/${roleId}`, getAuthHeaders());
+      const response = await axios.get(`${API_URL}/admin/adminrole/roles/${roleId}`, getAuthHeaders());
       return response.data;
     } catch (error) {
       console.error('Error fetching role:', error);
@@ -38,7 +38,7 @@ const roleService = {
   // Get all permissions
   getAllPermissions: async () => {
     try {
-      const response = await axios.get(`${API_URL}/permissions`, getAuthHeaders());
+      const response = await axios.get(`${API_URL}/admin/adminrole/permissions`, getAuthHeaders());
       return response.data;
     } catch (error) {
       console.error('Error fetching permissions:', error);
@@ -50,7 +50,7 @@ const roleService = {
   updateRole: async (roleId, roleData) => {
     try {
       const response = await axios.put(
-        `${API_URL}/roles/${roleId}`,
+        `${API_URL}/admin/adminrole/roles/${roleId}`,
         roleData,
         getAuthHeaders()
       );
@@ -65,7 +65,7 @@ const roleService = {
   updateRolePermissions: async (roleId, permissionIds) => {
     try {
       const response = await axios.put(
-        `${API_URL}/roles/${roleId}/permissions`,
+        `${API_URL}/admin/adminrole/roles/${roleId}/permissions`,
         permissionIds,
         getAuthHeaders()
       );

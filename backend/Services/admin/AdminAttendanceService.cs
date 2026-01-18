@@ -54,10 +54,16 @@ namespace BankAPI.Services.Admin
                 .Where(a => a.Date == targetDate)
                 .ToDictionaryAsync(a => a.EmployeeId, a => a);
 
+            // Get worklogs for the target date
+            var workLogs = await _context.WorkLogs
+                .Where(w => w.Date == targetDate)
+                .ToDictionaryAsync(w => w.EmployeeId, w => w);
+
             // Build the result
             var result = employees.Select(emp =>
             {
                 var attendance = attendances.GetValueOrDefault(emp.Id);
+                var workLog = workLogs.GetValueOrDefault(emp.Id);
 
                 string status = "absent";
                 if (attendance != null && attendance.CheckInTime.HasValue)
@@ -76,6 +82,23 @@ namespace BankAPI.Services.Admin
                     }
                 }
 
+                string? notes = null;
+                if (workLog != null)
+                {
+                    var taskPart = workLog.TaskName;
+                    var descPart = !string.IsNullOrEmpty(workLog.Description) ? workLog.Description : "";
+                    var hoursPart = $"{workLog.Hours}h";
+
+                    if (!string.IsNullOrEmpty(descPart))
+                    {
+                        notes = $"Task: {taskPart} - {descPart} ({hoursPart})";
+                    }
+                    else
+                    {
+                        notes = $"Task: {taskPart} ({hoursPart})";
+                    }
+                }
+
                 return new DailyAttendanceDto
                 {
                     EmployeeId = emp.EmployeeId,
@@ -87,7 +110,7 @@ namespace BankAPI.Services.Admin
                     CheckOutTime = attendance?.CheckOutTime?.ToString("hh:mm tt"),
                     WorkHours = attendance?.WorkHours,
                     Location = attendance?.Location,
-                    Notes = attendance?.Notes,
+                    Notes = notes,
                     Date = targetDate.ToString("yyyy-MM-dd")
                 };
             }).ToList();

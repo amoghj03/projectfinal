@@ -71,6 +71,9 @@ public class TenantCreateDto
     [MaxLength(50)]
     public string SubscriptionStatus { get; set; } = "trial";
 
+    [Range(1, 3650, ErrorMessage = "Subscription days must be between 1 and 3650")]
+    public int SubscriptionDays { get; set; } = 30;
+
     public DateTime? SubscriptionExpiresAt { get; set; }
 
     [Range(1, 10000)]

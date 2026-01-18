@@ -125,6 +125,7 @@ const TenantOnboarding = () => {
       currency: 'USD',
       subscriptionPlan: 'basic',
       subscriptionStatus: 'trial',
+      subscriptionDays: 30,
       subscriptionExpiresAt: '',
       maxEmployees: 50,
       maxBranches: 5,
@@ -717,6 +718,17 @@ const TenantOnboarding = () => {
                   <MenuItem value="suspended">Suspended</MenuItem>
                 </Select>
               </FormControl>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Subscription Days"
+                value={formData.tenant.subscriptionDays}
+                onChange={(e) => handleTenantChange('subscriptionDays', parseInt(e.target.value))}
+                inputProps={{ min: 1, max: 3650 }}
+                helperText="Number of days for subscription validity (1-3650)"
+              />
             </Grid>
             <Grid item xs={12} md={6}>
               <TextField

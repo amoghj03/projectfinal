@@ -38,6 +38,26 @@ public class AuthService : IAuthService
                 };
             }
 
+            // Check if tenant is active
+            if (user.Tenant != null && !user.Tenant.IsActive)
+            {
+                return new LoginResponse
+                {
+                    Success = false,
+                    Message = "Your tenant account has been deactivated. Please contact support."
+                };
+            }
+
+            // Check if tenant subscription has expired or is not set
+            if (user.Tenant != null && (!user.Tenant.SubscriptionExpiresAt.HasValue || DateTime.UtcNow > user.Tenant.SubscriptionExpiresAt.Value))
+            {
+                return new LoginResponse
+                {
+                    Success = false,
+                    Message = "Your subscription has expired or is not active. Please renew your subscription to continue."
+                };
+            }
+
             // In production, use proper password hashing (BCrypt, etc.)
             // For now, we'll do a simple check (matching the init_db.sql pattern)
             // Note: In init_db.sql, passwords are stored as '$2a$11$hashed_password_here'

@@ -478,11 +478,11 @@ const Dashboard = () => {
               day: 'numeric' 
             })}
           </Typography>
-          {dashboardStats && (
+          {/* {dashboardStats && (
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
               {dashboardStats.department} • {dashboardStats.jobRole}
             </Typography>
-          )}
+          )} */}
         </Box>
 
         {/* Analytics Widgets */}

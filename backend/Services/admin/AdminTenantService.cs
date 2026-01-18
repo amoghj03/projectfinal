@@ -58,6 +58,9 @@ public class AdminTenantService
             }
 
             // Step 4: Create Tenant
+            // Calculate subscription expiration date based on input days
+            var subscriptionExpiresAt = DateTime.UtcNow.AddDays(request.Tenant.SubscriptionDays);
+
             var tenant = new Tenant
             {
                 Name = request.Tenant.Name,
@@ -77,7 +80,7 @@ public class AdminTenantService
                 Currency = request.Tenant.Currency,
                 SubscriptionPlan = request.Tenant.SubscriptionPlan,
                 SubscriptionStatus = request.Tenant.SubscriptionStatus,
-                SubscriptionExpiresAt = request.Tenant.SubscriptionExpiresAt,
+                SubscriptionExpiresAt = subscriptionExpiresAt,
                 MaxEmployees = request.Tenant.MaxEmployees,
                 MaxBranches = request.Tenant.MaxBranches,
                 IsActive = true,

@@ -31,7 +31,7 @@ axiosInstance.interceptors.response.use(
     if (error.response?.status === 401) {
       // Handle unauthorized - redirect to login
       localStorage.removeItem('authToken');
-      window.location.href = '/login';
+      //window.location.href = '/login';
     }
     return Promise.reject(error);
   }

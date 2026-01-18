@@ -32,7 +32,7 @@ workLogApi.interceptors.response.use(
       localStorage.removeItem('authToken');
       localStorage.removeItem('employeeName');
       localStorage.removeItem('employeeId');
-      window.location.href = '/login';
+      //window.location.href = '/login';
     }
     return Promise.reject(error);
   }
