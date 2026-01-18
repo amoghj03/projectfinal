@@ -15,7 +15,7 @@ jobs:
 
       # ---------------- BACKEND ----------------
       - name: Deploy Backend
-        uses: appleboy/ssh-action@v1.0.3
+        uses: webfactory/ssh-agent@v0.9.0
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
