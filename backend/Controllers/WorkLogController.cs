@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BankAPI.Controllers;
 
-[Route("api/[controller]")]
+[Route("[controller]")]
 public class WorkLogController : BaseApiController
 {
     private readonly WorkLogService _workLogService;

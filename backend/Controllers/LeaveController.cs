@@ -6,7 +6,7 @@ using BankAPI.Services;
 
 namespace BankAPI.Controllers;
 
-[Route("api/[controller]")]
+[Route("[controller]")]
 public class LeaveController : BaseApiController
 {
     private readonly ILeaveService _leaveService;

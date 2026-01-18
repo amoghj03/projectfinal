@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace BankAPI.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     public class ComplaintController : BaseApiController
     {
         private readonly ComplaintService _complaintService;

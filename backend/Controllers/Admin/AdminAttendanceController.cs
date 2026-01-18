@@ -6,7 +6,7 @@ using BankAPI.Data;
 
 namespace BankAPI.Controllers.Admin;
 
-[Route("api/admin/[controller]")]
+[Route("admin/[controller]")]
 public class AdminAttendanceController : BaseApiController
 {
     private readonly AdminAttendanceService _adminAttendanceService;

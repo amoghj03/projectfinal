@@ -8,7 +8,7 @@ using BankAPI.Data;
 
 namespace BankAPI.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     [ApiController]
     public class DashboardController : BaseApiController
     {

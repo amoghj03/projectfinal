@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BankAPI.Controllers;
 
-[Route("api/[controller]")]
+[Route("[controller]")]
 public class AttendanceController : BaseApiController
 {
     private readonly AttendanceService _attendanceService;

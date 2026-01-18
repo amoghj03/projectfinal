@@ -1,5 +1,5 @@
 --
--- PostgreSQL database dump
+-- adminQL database dump
 --
 
 \restrict OReMXgVCMNSfx0CFyrCeSqIeJndU7pS9OK9wZZkfZdiaMaOfyzlOv1BtTSptxTf
@@ -24,7 +24,7 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
--- Name: attendance; Type: TABLE; Schema: public; Owner: postgres
+-- Name: attendance; Type: TABLE; Schema: public; Owner: admin
 --
 
 CREATE TABLE public.attendance (
@@ -43,10 +43,10 @@ CREATE TABLE public.attendance (
 );
 
 
-ALTER TABLE public.attendance OWNER TO postgres;
+ALTER TABLE public.attendance OWNER TO admin;
 
 --
--- Name: attendance_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: attendance_id_seq; Type: SEQUENCE; Schema: public; Owner: admin
 --
 
 ALTER TABLE public.attendance ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -60,7 +60,7 @@ ALTER TABLE public.attendance ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: audit_logs; Type: TABLE; Schema: public; Owner: postgres
+-- Name: audit_logs; Type: TABLE; Schema: public; Owner: admin
 --
 
 CREATE TABLE public.audit_logs (
@@ -78,10 +78,10 @@ CREATE TABLE public.audit_logs (
 );
 
 
-ALTER TABLE public.audit_logs OWNER TO postgres;
+ALTER TABLE public.audit_logs OWNER TO admin;
 
 --
--- Name: audit_logs_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: audit_logs_id_seq; Type: SEQUENCE; Schema: public; Owner: admin
 --
 
 ALTER TABLE public.audit_logs ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -95,7 +95,7 @@ ALTER TABLE public.audit_logs ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: branches; Type: TABLE; Schema: public; Owner: postgres
+-- Name: branches; Type: TABLE; Schema: public; Owner: admin
 --
 
 CREATE TABLE public.branches (
@@ -115,10 +115,10 @@ CREATE TABLE public.branches (
 );
 
 
-ALTER TABLE public.branches OWNER TO postgres;
+ALTER TABLE public.branches OWNER TO admin;
 
 --
--- Name: branches_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: branches_id_seq; Type: SEQUENCE; Schema: public; Owner: admin
 --
 
 ALTER TABLE public.branches ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -132,7 +132,7 @@ ALTER TABLE public.branches ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: complaints; Type: TABLE; Schema: public; Owner: postgres
+-- Name: complaints; Type: TABLE; Schema: public; Owner: admin
 --
 
 CREATE TABLE public.complaints (
@@ -154,10 +154,10 @@ CREATE TABLE public.complaints (
 );
 
 
-ALTER TABLE public.complaints OWNER TO postgres;
+ALTER TABLE public.complaints OWNER TO admin;
 
 --
--- Name: complaints_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: complaints_id_seq; Type: SEQUENCE; Schema: public; Owner: admin
 --
 
 ALTER TABLE public.complaints ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -171,7 +171,7 @@ ALTER TABLE public.complaints ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: employee_roles; Type: TABLE; Schema: public; Owner: postgres
+-- Name: employee_roles; Type: TABLE; Schema: public; Owner: admin
 --
 
 CREATE TABLE public.employee_roles (
@@ -183,10 +183,10 @@ CREATE TABLE public.employee_roles (
 );
 
 
-ALTER TABLE public.employee_roles OWNER TO postgres;
+ALTER TABLE public.employee_roles OWNER TO admin;
 
 --
--- Name: employee_roles_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: employee_roles_id_seq; Type: SEQUENCE; Schema: public; Owner: admin
 --
 
 ALTER TABLE public.employee_roles ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -200,7 +200,7 @@ ALTER TABLE public.employee_roles ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTI
 
 
 --
--- Name: employee_skill_tests; Type: TABLE; Schema: public; Owner: postgres
+-- Name: employee_skill_tests; Type: TABLE; Schema: public; Owner: admin
 --
 
 CREATE TABLE public.employee_skill_tests (
@@ -218,10 +218,10 @@ CREATE TABLE public.employee_skill_tests (
 );
 
 
-ALTER TABLE public.employee_skill_tests OWNER TO postgres;
+ALTER TABLE public.employee_skill_tests OWNER TO admin;
 
 --
--- Name: employee_skill_tests_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: employee_skill_tests_id_seq; Type: SEQUENCE; Schema: public; Owner: admin
 --
 
 ALTER TABLE public.employee_skill_tests ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -235,7 +235,7 @@ ALTER TABLE public.employee_skill_tests ALTER COLUMN id ADD GENERATED ALWAYS AS 
 
 
 --
--- Name: employees; Type: TABLE; Schema: public; Owner: postgres
+-- Name: employees; Type: TABLE; Schema: public; Owner: admin
 --
 
 CREATE TABLE public.employees (
@@ -262,10 +262,10 @@ CREATE TABLE public.employees (
 );
 
 
-ALTER TABLE public.employees OWNER TO postgres;
+ALTER TABLE public.employees OWNER TO admin;
 
 --
--- Name: employees_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: employees_id_seq; Type: SEQUENCE; Schema: public; Owner: admin
 --
 
 ALTER TABLE public.employees ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -279,7 +279,7 @@ ALTER TABLE public.employees ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: leave_balances; Type: TABLE; Schema: public; Owner: postgres
+-- Name: leave_balances; Type: TABLE; Schema: public; Owner: admin
 --
 
 CREATE TABLE public.leave_balances (
@@ -297,10 +297,10 @@ CREATE TABLE public.leave_balances (
 );
 
 
-ALTER TABLE public.leave_balances OWNER TO postgres;
+ALTER TABLE public.leave_balances OWNER TO admin;
 
 --
--- Name: leave_balances_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: leave_balances_id_seq; Type: SEQUENCE; Schema: public; Owner: admin
 --
 
 ALTER TABLE public.leave_balances ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -314,7 +314,7 @@ ALTER TABLE public.leave_balances ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTI
 
 
 --
--- Name: leave_requests; Type: TABLE; Schema: public; Owner: postgres
+-- Name: leave_requests; Type: TABLE; Schema: public; Owner: admin
 --
 
 CREATE TABLE public.leave_requests (
@@ -338,10 +338,10 @@ CREATE TABLE public.leave_requests (
 );
 
 
-ALTER TABLE public.leave_requests OWNER TO postgres;
+ALTER TABLE public.leave_requests OWNER TO admin;
 
 --
--- Name: leave_requests_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: leave_requests_id_seq; Type: SEQUENCE; Schema: public; Owner: admin
 --
 
 ALTER TABLE public.leave_requests ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -355,7 +355,7 @@ ALTER TABLE public.leave_requests ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTI
 
 
 --
--- Name: leave_types; Type: TABLE; Schema: public; Owner: postgres
+-- Name: leave_types; Type: TABLE; Schema: public; Owner: admin
 --
 
 CREATE TABLE public.leave_types (
@@ -371,10 +371,10 @@ CREATE TABLE public.leave_types (
 );
 
 
-ALTER TABLE public.leave_types OWNER TO postgres;
+ALTER TABLE public.leave_types OWNER TO admin;
 
 --
--- Name: leave_types_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: leave_types_id_seq; Type: SEQUENCE; Schema: public; Owner: admin
 --
 
 ALTER TABLE public.leave_types ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -388,7 +388,7 @@ ALTER TABLE public.leave_types ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY 
 
 
 --
--- Name: notifications; Type: TABLE; Schema: public; Owner: postgres
+-- Name: notifications; Type: TABLE; Schema: public; Owner: admin
 --
 
 CREATE TABLE public.notifications (
@@ -407,10 +407,10 @@ CREATE TABLE public.notifications (
 );
 
 
-ALTER TABLE public.notifications OWNER TO postgres;
+ALTER TABLE public.notifications OWNER TO admin;
 
 --
--- Name: notifications_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: notifications_id_seq; Type: SEQUENCE; Schema: public; Owner: admin
 --
 
 ALTER TABLE public.notifications ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -424,7 +424,7 @@ ALTER TABLE public.notifications ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTIT
 
 
 --
--- Name: payslips; Type: TABLE; Schema: public; Owner: postgres
+-- Name: payslips; Type: TABLE; Schema: public; Owner: admin
 --
 
 CREATE TABLE public.payslips (
@@ -451,10 +451,10 @@ CREATE TABLE public.payslips (
 );
 
 
-ALTER TABLE public.payslips OWNER TO postgres;
+ALTER TABLE public.payslips OWNER TO admin;
 
 --
--- Name: payslips_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: payslips_id_seq; Type: SEQUENCE; Schema: public; Owner: admin
 --
 
 ALTER TABLE public.payslips ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -468,7 +468,7 @@ ALTER TABLE public.payslips ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: permissions; Type: TABLE; Schema: public; Owner: postgres
+-- Name: permissions; Type: TABLE; Schema: public; Owner: admin
 --
 
 CREATE TABLE public.permissions (
@@ -481,10 +481,10 @@ CREATE TABLE public.permissions (
 );
 
 
-ALTER TABLE public.permissions OWNER TO postgres;
+ALTER TABLE public.permissions OWNER TO admin;
 
 --
--- Name: permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: admin
 --
 
 ALTER TABLE public.permissions ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -498,7 +498,7 @@ ALTER TABLE public.permissions ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY 
 
 
 --
--- Name: role_permissions; Type: TABLE; Schema: public; Owner: postgres
+-- Name: role_permissions; Type: TABLE; Schema: public; Owner: admin
 --
 
 CREATE TABLE public.role_permissions (
@@ -509,10 +509,10 @@ CREATE TABLE public.role_permissions (
 );
 
 
-ALTER TABLE public.role_permissions OWNER TO postgres;
+ALTER TABLE public.role_permissions OWNER TO admin;
 
 --
--- Name: role_permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: role_permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: admin
 --
 
 ALTER TABLE public.role_permissions ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -526,7 +526,7 @@ ALTER TABLE public.role_permissions ALTER COLUMN id ADD GENERATED ALWAYS AS IDEN
 
 
 --
--- Name: roles; Type: TABLE; Schema: public; Owner: postgres
+-- Name: roles; Type: TABLE; Schema: public; Owner: admin
 --
 
 CREATE TABLE public.roles (
@@ -540,10 +540,10 @@ CREATE TABLE public.roles (
 );
 
 
-ALTER TABLE public.roles OWNER TO postgres;
+ALTER TABLE public.roles OWNER TO admin;
 
 --
--- Name: roles_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: roles_id_seq; Type: SEQUENCE; Schema: public; Owner: admin
 --
 
 ALTER TABLE public.roles ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -557,7 +557,7 @@ ALTER TABLE public.roles ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: settings; Type: TABLE; Schema: public; Owner: postgres
+-- Name: settings; Type: TABLE; Schema: public; Owner: admin
 --
 
 CREATE TABLE public.settings (
@@ -570,10 +570,10 @@ CREATE TABLE public.settings (
 );
 
 
-ALTER TABLE public.settings OWNER TO postgres;
+ALTER TABLE public.settings OWNER TO admin;
 
 --
--- Name: settings_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: settings_id_seq; Type: SEQUENCE; Schema: public; Owner: admin
 --
 
 ALTER TABLE public.settings ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -587,7 +587,7 @@ ALTER TABLE public.settings ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: skill_tests; Type: TABLE; Schema: public; Owner: postgres
+-- Name: skill_tests; Type: TABLE; Schema: public; Owner: admin
 --
 
 CREATE TABLE public.skill_tests (
@@ -605,10 +605,10 @@ CREATE TABLE public.skill_tests (
 );
 
 
-ALTER TABLE public.skill_tests OWNER TO postgres;
+ALTER TABLE public.skill_tests OWNER TO admin;
 
 --
--- Name: skill_tests_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: skill_tests_id_seq; Type: SEQUENCE; Schema: public; Owner: admin
 --
 
 ALTER TABLE public.skill_tests ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -622,7 +622,7 @@ ALTER TABLE public.skill_tests ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY 
 
 
 --
--- Name: skills; Type: TABLE; Schema: public; Owner: postgres
+-- Name: skills; Type: TABLE; Schema: public; Owner: admin
 --
 
 CREATE TABLE public.skills (
@@ -636,10 +636,10 @@ CREATE TABLE public.skills (
 );
 
 
-ALTER TABLE public.skills OWNER TO postgres;
+ALTER TABLE public.skills OWNER TO admin;
 
 --
--- Name: skills_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: skills_id_seq; Type: SEQUENCE; Schema: public; Owner: admin
 --
 
 ALTER TABLE public.skills ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -653,7 +653,7 @@ ALTER TABLE public.skills ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: tech_issues; Type: TABLE; Schema: public; Owner: postgres
+-- Name: tech_issues; Type: TABLE; Schema: public; Owner: admin
 --
 
 CREATE TABLE public.tech_issues (
@@ -677,10 +677,10 @@ CREATE TABLE public.tech_issues (
 );
 
 
-ALTER TABLE public.tech_issues OWNER TO postgres;
+ALTER TABLE public.tech_issues OWNER TO admin;
 
 --
--- Name: tech_issues_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: tech_issues_id_seq; Type: SEQUENCE; Schema: public; Owner: admin
 --
 
 ALTER TABLE public.tech_issues ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -694,7 +694,7 @@ ALTER TABLE public.tech_issues ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY 
 
 
 --
--- Name: tenants; Type: TABLE; Schema: public; Owner: postgres
+-- Name: tenants; Type: TABLE; Schema: public; Owner: admin
 --
 
 CREATE TABLE public.tenants (
@@ -725,10 +725,10 @@ CREATE TABLE public.tenants (
 );
 
 
-ALTER TABLE public.tenants OWNER TO postgres;
+ALTER TABLE public.tenants OWNER TO admin;
 
 --
--- Name: tenants_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: tenants_id_seq; Type: SEQUENCE; Schema: public; Owner: admin
 --
 
 ALTER TABLE public.tenants ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -742,7 +742,7 @@ ALTER TABLE public.tenants ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: users; Type: TABLE; Schema: public; Owner: postgres
+-- Name: users; Type: TABLE; Schema: public; Owner: admin
 --
 
 CREATE TABLE public.users (
@@ -758,10 +758,10 @@ CREATE TABLE public.users (
 );
 
 
-ALTER TABLE public.users OWNER TO postgres;
+ALTER TABLE public.users OWNER TO admin;
 
 --
--- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: admin
 --
 
 ALTER TABLE public.users ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -775,7 +775,7 @@ ALTER TABLE public.users ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: work_logs; Type: TABLE; Schema: public; Owner: postgres
+-- Name: work_logs; Type: TABLE; Schema: public; Owner: admin
 --
 
 CREATE TABLE public.work_logs (
@@ -793,10 +793,10 @@ CREATE TABLE public.work_logs (
 );
 
 
-ALTER TABLE public.work_logs OWNER TO postgres;
+ALTER TABLE public.work_logs OWNER TO admin;
 
 --
--- Name: work_logs_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: work_logs_id_seq; Type: SEQUENCE; Schema: public; Owner: admin
 --
 
 ALTER TABLE public.work_logs ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -810,7 +810,7 @@ ALTER TABLE public.work_logs ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Data for Name: attendance; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: attendance; Type: TABLE DATA; Schema: public; Owner: admin
 --
 
 COPY public.attendance (id, tenant_id, employee_id, date, check_in_time, check_out_time, status, work_hours, location, notes, created_at, updated_at) FROM stdin;
@@ -820,7 +820,7 @@ COPY public.attendance (id, tenant_id, employee_id, date, check_in_time, check_o
 
 
 --
--- Data for Name: audit_logs; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: audit_logs; Type: TABLE DATA; Schema: public; Owner: admin
 --
 
 COPY public.audit_logs (id, tenant_id, user_id, employee_id, action, entity_type, entity_id, changes, ip_address, user_agent, created_at) FROM stdin;
@@ -829,7 +829,7 @@ COPY public.audit_logs (id, tenant_id, user_id, employee_id, action, entity_type
 
 
 --
--- Data for Name: branches; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: branches; Type: TABLE DATA; Schema: public; Owner: admin
 --
 
 COPY public.branches (id, tenant_id, name, code, address, city, state, country, phone, email, is_active, created_at, updated_at) FROM stdin;
@@ -839,7 +839,7 @@ COPY public.branches (id, tenant_id, name, code, address, city, state, country, 
 
 
 --
--- Data for Name: complaints; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: complaints; Type: TABLE DATA; Schema: public; Owner: admin
 --
 
 COPY public.complaints (id, tenant_id, complaint_number, employee_id, category, subject, description, priority, status, assigned_to, resolved_at, resolution_notes, created_at, updated_at, requires_approval) FROM stdin;
@@ -850,7 +850,7 @@ COPY public.complaints (id, tenant_id, complaint_number, employee_id, category, 
 
 
 --
--- Data for Name: employee_roles; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: employee_roles; Type: TABLE DATA; Schema: public; Owner: admin
 --
 
 COPY public.employee_roles (id, employee_id, role_id, assigned_by, assigned_at) FROM stdin;
@@ -861,7 +861,7 @@ COPY public.employee_roles (id, employee_id, role_id, assigned_by, assigned_at) 
 
 
 --
--- Data for Name: employee_skill_tests; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: employee_skill_tests; Type: TABLE DATA; Schema: public; Owner: admin
 --
 
 COPY public.employee_skill_tests (id, tenant_id, employee_id, skill_test_id, score, max_score, status, attempted_at, duration_minutes, created_at) FROM stdin;
@@ -870,7 +870,7 @@ COPY public.employee_skill_tests (id, tenant_id, employee_id, skill_test_id, sco
 
 
 --
--- Data for Name: employees; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: employees; Type: TABLE DATA; Schema: public; Owner: admin
 --
 
 COPY public.employees (id, tenant_id, user_id, employee_id, full_name, email, phone, gender, date_of_birth, photo_url, department, branch_id, job_role, status, join_date, salary, address, emergency_contact, created_at, updated_at) FROM stdin;
@@ -881,7 +881,7 @@ COPY public.employees (id, tenant_id, user_id, employee_id, full_name, email, ph
 
 
 --
--- Data for Name: leave_balances; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: leave_balances; Type: TABLE DATA; Schema: public; Owner: admin
 --
 
 COPY public.leave_balances (id, tenant_id, employee_id, leave_type_id, year, total_allocated, used, pending, created_at, updated_at) FROM stdin;
@@ -898,7 +898,7 @@ COPY public.leave_balances (id, tenant_id, employee_id, leave_type_id, year, tot
 
 
 --
--- Data for Name: leave_requests; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: leave_requests; Type: TABLE DATA; Schema: public; Owner: admin
 --
 
 COPY public.leave_requests (id, tenant_id, employee_id, leave_type_id, start_date, end_date, total_days, is_half_day, half_day_period, reason, status, applied_at, reviewed_by, reviewed_at, review_remarks, created_at, updated_at) FROM stdin;
@@ -909,7 +909,7 @@ COPY public.leave_requests (id, tenant_id, employee_id, leave_type_id, start_dat
 
 
 --
--- Data for Name: leave_types; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: leave_types; Type: TABLE DATA; Schema: public; Owner: admin
 --
 
 COPY public.leave_types (id, tenant_id, name, description, max_days_per_year, requires_approval, is_paid, is_active, created_at) FROM stdin;
@@ -920,7 +920,7 @@ COPY public.leave_types (id, tenant_id, name, description, max_days_per_year, re
 
 
 --
--- Data for Name: notifications; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: notifications; Type: TABLE DATA; Schema: public; Owner: admin
 --
 
 COPY public.notifications (id, tenant_id, employee_id, title, message, type, category, reference_id, reference_type, is_read, read_at, created_at) FROM stdin;
@@ -929,7 +929,7 @@ COPY public.notifications (id, tenant_id, employee_id, title, message, type, cat
 
 
 --
--- Data for Name: payslips; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: payslips; Type: TABLE DATA; Schema: public; Owner: admin
 --
 
 COPY public.payslips (id, tenant_id, employee_id, month, year, basic_salary, allowances, deductions, gross_salary, net_salary, working_days, present_days, leave_days, status, generated_by, generated_at, sent_at, acknowledged_at, pdf_url, created_at) FROM stdin;
@@ -939,7 +939,7 @@ COPY public.payslips (id, tenant_id, employee_id, month, year, basic_salary, all
 
 
 --
--- Data for Name: permissions; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: permissions; Type: TABLE DATA; Schema: public; Owner: admin
 --
 
 COPY public.permissions (id, name, display_name, description, category, created_at) FROM stdin;
@@ -963,7 +963,7 @@ COPY public.permissions (id, name, display_name, description, category, created_
 
 
 --
--- Data for Name: role_permissions; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: role_permissions; Type: TABLE DATA; Schema: public; Owner: admin
 --
 
 COPY public.role_permissions (id, role_id, permission_id, created_at) FROM stdin;
@@ -1009,7 +1009,7 @@ COPY public.role_permissions (id, role_id, permission_id, created_at) FROM stdin
 
 
 --
--- Data for Name: roles; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: roles; Type: TABLE DATA; Schema: public; Owner: admin
 --
 
 COPY public.roles (id, tenant_id, name, description, is_system, created_at, updated_at) FROM stdin;
@@ -1020,7 +1020,7 @@ COPY public.roles (id, tenant_id, name, description, is_system, created_at, upda
 
 
 --
--- Data for Name: settings; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: settings; Type: TABLE DATA; Schema: public; Owner: admin
 --
 
 COPY public.settings (id, tenant_id, key, value, created_at, updated_at) FROM stdin;
@@ -1031,25 +1031,25 @@ COPY public.settings (id, tenant_id, key, value, created_at, updated_at) FROM st
 
 
 --
--- Data for Name: skill_tests; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: skill_tests; Type: TABLE DATA; Schema: public; Owner: admin
 --
 
 COPY public.skill_tests (id, tenant_id, title, skill_id, description, total_questions, passing_score, duration_minutes, is_active, created_at, updated_at) FROM stdin;
-1	1	PostgreSQL Basics	1	\N	\N	60	\N	t	2025-12-30 14:49:47.104482	2025-12-30 14:49:47.104482
+1	1	adminQL Basics	1	\N	\N	60	\N	t	2025-12-30 14:49:47.104482	2025-12-30 14:49:47.104482
 \.
 
 
 --
--- Data for Name: skills; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: skills; Type: TABLE DATA; Schema: public; Owner: admin
 --
 
 COPY public.skills (id, tenant_id, name, category, description, is_active, created_at) FROM stdin;
-1	1	PostgreSQL	\N	\N	t	2025-12-30 14:49:47.104482
+1	1	adminQL	\N	\N	t	2025-12-30 14:49:47.104482
 \.
 
 
 --
--- Data for Name: tech_issues; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: tech_issues; Type: TABLE DATA; Schema: public; Owner: admin
 --
 
 COPY public.tech_issues (id, tenant_id, issue_number, employee_id, category, title, description, priority, status, requires_approval, approved_by, approved_at, assigned_to, resolved_at, resolution_notes, created_at, updated_at) FROM stdin;
@@ -1062,7 +1062,7 @@ COPY public.tech_issues (id, tenant_id, issue_number, employee_id, category, tit
 
 
 --
--- Data for Name: tenants; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: tenants; Type: TABLE DATA; Schema: public; Owner: admin
 --
 
 COPY public.tenants (id, name, slug, domain, subdomain, logo_url, contact_email, contact_phone, address, city, state, country, timezone, currency, settings, subscription_plan, subscription_status, subscription_expires_at, max_employees, max_branches, is_active, onboarded_at, created_at, updated_at) FROM stdin;
@@ -1071,7 +1071,7 @@ COPY public.tenants (id, name, slug, domain, subdomain, logo_url, contact_email,
 
 
 --
--- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: admin
 --
 
 COPY public.users (id, tenant_id, email, password, role, is_active, last_login, created_at, updated_at) FROM stdin;
@@ -1082,7 +1082,7 @@ COPY public.users (id, tenant_id, email, password, role, is_active, last_login, 
 
 
 --
--- Data for Name: work_logs; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: work_logs; Type: TABLE DATA; Schema: public; Owner: admin
 --
 
 COPY public.work_logs (id, tenant_id, employee_id, date, task_name, description, hours, category, status, created_at, updated_at) FROM stdin;
@@ -1096,161 +1096,161 @@ COPY public.work_logs (id, tenant_id, employee_id, date, task_name, description,
 
 
 --
--- Name: attendance_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: attendance_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
 --
 
 SELECT pg_catalog.setval('public.attendance_id_seq', 17, true);
 
 
 --
--- Name: audit_logs_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: audit_logs_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
 --
 
 SELECT pg_catalog.setval('public.audit_logs_id_seq', 1, true);
 
 
 --
--- Name: branches_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: branches_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
 --
 
 SELECT pg_catalog.setval('public.branches_id_seq', 5, true);
 
 
 --
--- Name: complaints_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: complaints_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
 --
 
 SELECT pg_catalog.setval('public.complaints_id_seq', 3, true);
 
 
 --
--- Name: employee_roles_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: employee_roles_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
 --
 
 SELECT pg_catalog.setval('public.employee_roles_id_seq', 3, true);
 
 
 --
--- Name: employee_skill_tests_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: employee_skill_tests_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
 --
 
 SELECT pg_catalog.setval('public.employee_skill_tests_id_seq', 2, true);
 
 
 --
--- Name: employees_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: employees_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
 --
 
 SELECT pg_catalog.setval('public.employees_id_seq', 3, true);
 
 
 --
--- Name: leave_balances_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: leave_balances_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
 --
 
 SELECT pg_catalog.setval('public.leave_balances_id_seq', 10, true);
 
 
 --
--- Name: leave_requests_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: leave_requests_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
 --
 
 SELECT pg_catalog.setval('public.leave_requests_id_seq', 11, true);
 
 
 --
--- Name: leave_types_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: leave_types_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
 --
 
 SELECT pg_catalog.setval('public.leave_types_id_seq', 4, true);
 
 
 --
--- Name: notifications_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: notifications_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
 --
 
 SELECT pg_catalog.setval('public.notifications_id_seq', 1, true);
 
 
 --
--- Name: payslips_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: payslips_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
 --
 
 SELECT pg_catalog.setval('public.payslips_id_seq', 2, true);
 
 
 --
--- Name: permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
 --
 
 SELECT pg_catalog.setval('public.permissions_id_seq', 16, true);
 
 
 --
--- Name: role_permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: role_permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
 --
 
 SELECT pg_catalog.setval('public.role_permissions_id_seq', 20, true);
 
 
 --
--- Name: roles_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: roles_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
 --
 
 SELECT pg_catalog.setval('public.roles_id_seq', 3, true);
 
 
 --
--- Name: settings_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: settings_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
 --
 
 SELECT pg_catalog.setval('public.settings_id_seq', 5, true);
 
 
 --
--- Name: skill_tests_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: skill_tests_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
 --
 
 SELECT pg_catalog.setval('public.skill_tests_id_seq', 1, true);
 
 
 --
--- Name: skills_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: skills_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
 --
 
 SELECT pg_catalog.setval('public.skills_id_seq', 1, true);
 
 
 --
--- Name: tech_issues_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: tech_issues_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
 --
 
 SELECT pg_catalog.setval('public.tech_issues_id_seq', 5, true);
 
 
 --
--- Name: tenants_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: tenants_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
 --
 
 SELECT pg_catalog.setval('public.tenants_id_seq', 2, true);
 
 
 --
--- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
 --
 
 SELECT pg_catalog.setval('public.users_id_seq', 3, true);
 
 
 --
--- Name: work_logs_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+-- Name: work_logs_id_seq; Type: SEQUENCE SET; Schema: public; Owner: admin
 --
 
 SELECT pg_catalog.setval('public.work_logs_id_seq', 7, true);
 
 
 --
--- Name: attendance attendance_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: attendance attendance_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.attendance
@@ -1258,7 +1258,7 @@ ALTER TABLE ONLY public.attendance
 
 
 --
--- Name: attendance attendance_tenant_id_employee_id_date_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: attendance attendance_tenant_id_employee_id_date_key; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.attendance
@@ -1266,7 +1266,7 @@ ALTER TABLE ONLY public.attendance
 
 
 --
--- Name: audit_logs audit_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: audit_logs audit_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.audit_logs
@@ -1274,7 +1274,7 @@ ALTER TABLE ONLY public.audit_logs
 
 
 --
--- Name: branches branches_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: branches branches_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.branches
@@ -1282,7 +1282,7 @@ ALTER TABLE ONLY public.branches
 
 
 --
--- Name: branches branches_tenant_id_code_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: branches branches_tenant_id_code_key; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.branches
@@ -1290,7 +1290,7 @@ ALTER TABLE ONLY public.branches
 
 
 --
--- Name: complaints complaints_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: complaints complaints_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.complaints
@@ -1298,7 +1298,7 @@ ALTER TABLE ONLY public.complaints
 
 
 --
--- Name: complaints complaints_tenant_id_complaint_number_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: complaints complaints_tenant_id_complaint_number_key; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.complaints
@@ -1306,7 +1306,7 @@ ALTER TABLE ONLY public.complaints
 
 
 --
--- Name: employee_roles employee_roles_employee_id_role_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: employee_roles employee_roles_employee_id_role_id_key; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.employee_roles
@@ -1314,7 +1314,7 @@ ALTER TABLE ONLY public.employee_roles
 
 
 --
--- Name: employee_roles employee_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: employee_roles employee_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.employee_roles
@@ -1322,7 +1322,7 @@ ALTER TABLE ONLY public.employee_roles
 
 
 --
--- Name: employee_skill_tests employee_skill_tests_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: employee_skill_tests employee_skill_tests_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.employee_skill_tests
@@ -1330,7 +1330,7 @@ ALTER TABLE ONLY public.employee_skill_tests
 
 
 --
--- Name: employees employees_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: employees employees_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.employees
@@ -1338,7 +1338,7 @@ ALTER TABLE ONLY public.employees
 
 
 --
--- Name: employees employees_tenant_id_email_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: employees employees_tenant_id_email_key; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.employees
@@ -1346,7 +1346,7 @@ ALTER TABLE ONLY public.employees
 
 
 --
--- Name: employees employees_tenant_id_employee_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: employees employees_tenant_id_employee_id_key; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.employees
@@ -1354,7 +1354,7 @@ ALTER TABLE ONLY public.employees
 
 
 --
--- Name: leave_balances leave_balances_employee_id_leave_type_id_year_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: leave_balances leave_balances_employee_id_leave_type_id_year_key; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.leave_balances
@@ -1362,7 +1362,7 @@ ALTER TABLE ONLY public.leave_balances
 
 
 --
--- Name: leave_balances leave_balances_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: leave_balances leave_balances_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.leave_balances
@@ -1370,7 +1370,7 @@ ALTER TABLE ONLY public.leave_balances
 
 
 --
--- Name: leave_requests leave_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: leave_requests leave_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.leave_requests
@@ -1378,7 +1378,7 @@ ALTER TABLE ONLY public.leave_requests
 
 
 --
--- Name: leave_types leave_types_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: leave_types leave_types_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.leave_types
@@ -1386,7 +1386,7 @@ ALTER TABLE ONLY public.leave_types
 
 
 --
--- Name: leave_types leave_types_tenant_id_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: leave_types leave_types_tenant_id_name_key; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.leave_types
@@ -1394,7 +1394,7 @@ ALTER TABLE ONLY public.leave_types
 
 
 --
--- Name: notifications notifications_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: notifications notifications_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.notifications
@@ -1402,7 +1402,7 @@ ALTER TABLE ONLY public.notifications
 
 
 --
--- Name: payslips payslips_employee_id_month_year_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: payslips payslips_employee_id_month_year_key; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.payslips
@@ -1410,7 +1410,7 @@ ALTER TABLE ONLY public.payslips
 
 
 --
--- Name: payslips payslips_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: payslips payslips_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.payslips
@@ -1418,7 +1418,7 @@ ALTER TABLE ONLY public.payslips
 
 
 --
--- Name: permissions permissions_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: permissions permissions_name_key; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.permissions
@@ -1426,7 +1426,7 @@ ALTER TABLE ONLY public.permissions
 
 
 --
--- Name: permissions permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: permissions permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.permissions
@@ -1434,7 +1434,7 @@ ALTER TABLE ONLY public.permissions
 
 
 --
--- Name: role_permissions role_permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: role_permissions role_permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.role_permissions
@@ -1442,7 +1442,7 @@ ALTER TABLE ONLY public.role_permissions
 
 
 --
--- Name: role_permissions role_permissions_role_id_permission_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: role_permissions role_permissions_role_id_permission_id_key; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.role_permissions
@@ -1450,7 +1450,7 @@ ALTER TABLE ONLY public.role_permissions
 
 
 --
--- Name: roles roles_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: roles roles_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.roles
@@ -1458,7 +1458,7 @@ ALTER TABLE ONLY public.roles
 
 
 --
--- Name: roles roles_tenant_id_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: roles roles_tenant_id_name_key; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.roles
@@ -1466,7 +1466,7 @@ ALTER TABLE ONLY public.roles
 
 
 --
--- Name: settings settings_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: settings settings_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.settings
@@ -1474,7 +1474,7 @@ ALTER TABLE ONLY public.settings
 
 
 --
--- Name: settings settings_tenant_id_key_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: settings settings_tenant_id_key_key; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.settings
@@ -1482,7 +1482,7 @@ ALTER TABLE ONLY public.settings
 
 
 --
--- Name: skill_tests skill_tests_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: skill_tests skill_tests_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.skill_tests
@@ -1490,7 +1490,7 @@ ALTER TABLE ONLY public.skill_tests
 
 
 --
--- Name: skills skills_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: skills skills_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.skills
@@ -1498,7 +1498,7 @@ ALTER TABLE ONLY public.skills
 
 
 --
--- Name: skills skills_tenant_id_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: skills skills_tenant_id_name_key; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.skills
@@ -1506,7 +1506,7 @@ ALTER TABLE ONLY public.skills
 
 
 --
--- Name: tech_issues tech_issues_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tech_issues tech_issues_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.tech_issues
@@ -1514,7 +1514,7 @@ ALTER TABLE ONLY public.tech_issues
 
 
 --
--- Name: tech_issues tech_issues_tenant_id_issue_number_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tech_issues tech_issues_tenant_id_issue_number_key; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.tech_issues
@@ -1522,7 +1522,7 @@ ALTER TABLE ONLY public.tech_issues
 
 
 --
--- Name: tenants tenants_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tenants tenants_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.tenants
@@ -1530,7 +1530,7 @@ ALTER TABLE ONLY public.tenants
 
 
 --
--- Name: tenants tenants_slug_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tenants tenants_slug_key; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.tenants
@@ -1538,7 +1538,7 @@ ALTER TABLE ONLY public.tenants
 
 
 --
--- Name: tenants tenants_subdomain_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tenants tenants_subdomain_key; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.tenants
@@ -1546,7 +1546,7 @@ ALTER TABLE ONLY public.tenants
 
 
 --
--- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.users
@@ -1554,7 +1554,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: users users_tenant_id_email_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: users users_tenant_id_email_key; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.users
@@ -1562,7 +1562,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: work_logs work_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: work_logs work_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.work_logs
@@ -1570,7 +1570,7 @@ ALTER TABLE ONLY public.work_logs
 
 
 --
--- Name: attendance attendance_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: attendance attendance_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.attendance
@@ -1578,7 +1578,7 @@ ALTER TABLE ONLY public.attendance
 
 
 --
--- Name: attendance attendance_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: attendance attendance_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.attendance
@@ -1586,7 +1586,7 @@ ALTER TABLE ONLY public.attendance
 
 
 --
--- Name: audit_logs audit_logs_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: audit_logs audit_logs_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.audit_logs
@@ -1594,7 +1594,7 @@ ALTER TABLE ONLY public.audit_logs
 
 
 --
--- Name: audit_logs audit_logs_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: audit_logs audit_logs_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.audit_logs
@@ -1602,7 +1602,7 @@ ALTER TABLE ONLY public.audit_logs
 
 
 --
--- Name: audit_logs audit_logs_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: audit_logs audit_logs_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.audit_logs
@@ -1610,7 +1610,7 @@ ALTER TABLE ONLY public.audit_logs
 
 
 --
--- Name: branches branches_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: branches branches_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.branches
@@ -1618,7 +1618,7 @@ ALTER TABLE ONLY public.branches
 
 
 --
--- Name: complaints complaints_assigned_to_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: complaints complaints_assigned_to_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.complaints
@@ -1626,7 +1626,7 @@ ALTER TABLE ONLY public.complaints
 
 
 --
--- Name: complaints complaints_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: complaints complaints_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.complaints
@@ -1634,7 +1634,7 @@ ALTER TABLE ONLY public.complaints
 
 
 --
--- Name: complaints complaints_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: complaints complaints_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.complaints
@@ -1642,7 +1642,7 @@ ALTER TABLE ONLY public.complaints
 
 
 --
--- Name: employee_roles employee_roles_assigned_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: employee_roles employee_roles_assigned_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.employee_roles
@@ -1650,7 +1650,7 @@ ALTER TABLE ONLY public.employee_roles
 
 
 --
--- Name: employee_roles employee_roles_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: employee_roles employee_roles_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.employee_roles
@@ -1658,7 +1658,7 @@ ALTER TABLE ONLY public.employee_roles
 
 
 --
--- Name: employee_roles employee_roles_role_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: employee_roles employee_roles_role_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.employee_roles
@@ -1666,7 +1666,7 @@ ALTER TABLE ONLY public.employee_roles
 
 
 --
--- Name: employee_skill_tests employee_skill_tests_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: employee_skill_tests employee_skill_tests_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.employee_skill_tests
@@ -1674,7 +1674,7 @@ ALTER TABLE ONLY public.employee_skill_tests
 
 
 --
--- Name: employee_skill_tests employee_skill_tests_skill_test_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: employee_skill_tests employee_skill_tests_skill_test_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.employee_skill_tests
@@ -1682,7 +1682,7 @@ ALTER TABLE ONLY public.employee_skill_tests
 
 
 --
--- Name: employee_skill_tests employee_skill_tests_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: employee_skill_tests employee_skill_tests_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.employee_skill_tests
@@ -1690,7 +1690,7 @@ ALTER TABLE ONLY public.employee_skill_tests
 
 
 --
--- Name: employees employees_branch_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: employees employees_branch_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.employees
@@ -1698,7 +1698,7 @@ ALTER TABLE ONLY public.employees
 
 
 --
--- Name: employees employees_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: employees employees_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.employees
@@ -1706,7 +1706,7 @@ ALTER TABLE ONLY public.employees
 
 
 --
--- Name: employees employees_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: employees employees_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.employees
@@ -1714,7 +1714,7 @@ ALTER TABLE ONLY public.employees
 
 
 --
--- Name: leave_balances leave_balances_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: leave_balances leave_balances_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.leave_balances
@@ -1722,7 +1722,7 @@ ALTER TABLE ONLY public.leave_balances
 
 
 --
--- Name: leave_balances leave_balances_leave_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: leave_balances leave_balances_leave_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.leave_balances
@@ -1730,7 +1730,7 @@ ALTER TABLE ONLY public.leave_balances
 
 
 --
--- Name: leave_balances leave_balances_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: leave_balances leave_balances_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.leave_balances
@@ -1738,7 +1738,7 @@ ALTER TABLE ONLY public.leave_balances
 
 
 --
--- Name: leave_requests leave_requests_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: leave_requests leave_requests_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.leave_requests
@@ -1746,7 +1746,7 @@ ALTER TABLE ONLY public.leave_requests
 
 
 --
--- Name: leave_requests leave_requests_leave_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: leave_requests leave_requests_leave_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.leave_requests
@@ -1754,7 +1754,7 @@ ALTER TABLE ONLY public.leave_requests
 
 
 --
--- Name: leave_requests leave_requests_reviewed_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: leave_requests leave_requests_reviewed_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.leave_requests
@@ -1762,7 +1762,7 @@ ALTER TABLE ONLY public.leave_requests
 
 
 --
--- Name: leave_requests leave_requests_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: leave_requests leave_requests_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.leave_requests
@@ -1770,7 +1770,7 @@ ALTER TABLE ONLY public.leave_requests
 
 
 --
--- Name: leave_types leave_types_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: leave_types leave_types_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.leave_types
@@ -1778,7 +1778,7 @@ ALTER TABLE ONLY public.leave_types
 
 
 --
--- Name: notifications notifications_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: notifications notifications_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.notifications
@@ -1786,7 +1786,7 @@ ALTER TABLE ONLY public.notifications
 
 
 --
--- Name: notifications notifications_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: notifications notifications_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.notifications
@@ -1794,7 +1794,7 @@ ALTER TABLE ONLY public.notifications
 
 
 --
--- Name: payslips payslips_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: payslips payslips_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.payslips
@@ -1802,7 +1802,7 @@ ALTER TABLE ONLY public.payslips
 
 
 --
--- Name: payslips payslips_generated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: payslips payslips_generated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.payslips
@@ -1810,7 +1810,7 @@ ALTER TABLE ONLY public.payslips
 
 
 --
--- Name: payslips payslips_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: payslips payslips_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.payslips
@@ -1818,7 +1818,7 @@ ALTER TABLE ONLY public.payslips
 
 
 --
--- Name: role_permissions role_permissions_permission_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: role_permissions role_permissions_permission_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.role_permissions
@@ -1826,7 +1826,7 @@ ALTER TABLE ONLY public.role_permissions
 
 
 --
--- Name: role_permissions role_permissions_role_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: role_permissions role_permissions_role_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.role_permissions
@@ -1834,7 +1834,7 @@ ALTER TABLE ONLY public.role_permissions
 
 
 --
--- Name: roles roles_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: roles roles_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.roles
@@ -1842,7 +1842,7 @@ ALTER TABLE ONLY public.roles
 
 
 --
--- Name: settings settings_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: settings settings_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.settings
@@ -1850,7 +1850,7 @@ ALTER TABLE ONLY public.settings
 
 
 --
--- Name: skill_tests skill_tests_skill_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: skill_tests skill_tests_skill_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.skill_tests
@@ -1858,7 +1858,7 @@ ALTER TABLE ONLY public.skill_tests
 
 
 --
--- Name: skill_tests skill_tests_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: skill_tests skill_tests_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.skill_tests
@@ -1866,7 +1866,7 @@ ALTER TABLE ONLY public.skill_tests
 
 
 --
--- Name: skills skills_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: skills skills_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.skills
@@ -1874,7 +1874,7 @@ ALTER TABLE ONLY public.skills
 
 
 --
--- Name: tech_issues tech_issues_approved_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tech_issues tech_issues_approved_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.tech_issues
@@ -1882,7 +1882,7 @@ ALTER TABLE ONLY public.tech_issues
 
 
 --
--- Name: tech_issues tech_issues_assigned_to_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tech_issues tech_issues_assigned_to_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.tech_issues
@@ -1890,7 +1890,7 @@ ALTER TABLE ONLY public.tech_issues
 
 
 --
--- Name: tech_issues tech_issues_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tech_issues tech_issues_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.tech_issues
@@ -1898,7 +1898,7 @@ ALTER TABLE ONLY public.tech_issues
 
 
 --
--- Name: tech_issues tech_issues_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tech_issues tech_issues_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.tech_issues
@@ -1906,7 +1906,7 @@ ALTER TABLE ONLY public.tech_issues
 
 
 --
--- Name: users users_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: users users_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.users
@@ -1914,7 +1914,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: work_logs work_logs_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: work_logs work_logs_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.work_logs
@@ -1922,7 +1922,7 @@ ALTER TABLE ONLY public.work_logs
 
 
 --
--- Name: work_logs work_logs_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: work_logs work_logs_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.work_logs
@@ -1930,7 +1930,7 @@ ALTER TABLE ONLY public.work_logs
 
 
 --
--- PostgreSQL database dump complete
+-- adminQL database dump complete
 --
 
 \unrestrict OReMXgVCMNSfx0CFyrCeSqIeJndU7pS9OK9wZZkfZdiaMaOfyzlOv1BtTSptxTf

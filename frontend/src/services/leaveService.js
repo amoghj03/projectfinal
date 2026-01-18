@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = `${process.env.REACT_APP_API_URL}`;
 
 // Create axios instance with default config
 const axiosInstance = axios.create({
@@ -82,7 +82,7 @@ class LeaveService {
       const response = await axiosInstance.get('/Leave/balance');
       return response.data;
     } catch (error) {
-      console.error('Error fetching leave balance:', error); 
+      console.error('Error fetching leave balance:', error);
       throw error;
     }
   }

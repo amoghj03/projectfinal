@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = `${process.env.REACT_APP_API_URL}`;
 
 // Create axios instance with default config
 const axiosInstance = axios.create({
@@ -50,7 +50,7 @@ class AdminLeaveService {
   async getLeaveRequests(filters = {}) {
     try {
       const params = {};
-      
+
       if (filters.branch) params.branch = filters.branch;
       if (filters.status) params.status = filters.status;
       if (filters.employeeName) params.employeeName = filters.employeeName;

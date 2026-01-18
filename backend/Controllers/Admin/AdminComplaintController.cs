@@ -5,7 +5,7 @@ using BankAPI.Data;
 
 namespace BankAPI.Controllers.Admin
 {
-    [Route("api/admin/Complaint")]
+    [Route("admin/Complaint")]
     [ApiController]
     public class AdminComplaintController : BaseApiController
     {

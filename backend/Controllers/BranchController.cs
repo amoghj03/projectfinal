@@ -6,7 +6,7 @@ using BankAPI.Models;
 namespace BankAPI.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("[controller]")]
 public class BranchController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
