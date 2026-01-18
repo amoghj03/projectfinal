@@ -22,7 +22,7 @@ jobs:
           key: ${{ secrets.VPS_KEY }}
           script: |
             cd /root/var/repos/myapp/backend
-            git pull origin main
+            git pull origin Release
             dotnet publish -c Release -o /tmp/bankapi_publish
             sudo rm -rf /root/var/www/dotnet-api/backend/publish/*
             sudo cp -r /tmp/bankapi_publish/* /root/var/www/dotnet-api/backend/publish/
