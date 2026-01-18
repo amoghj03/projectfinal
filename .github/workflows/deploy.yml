@@ -1,0 +1,44 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - Release
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ---------------- BACKEND ----------------
+      - name: Deploy Backend
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_KEY }}
+          script: |
+            cd /root/var/www/dotnet-api/backend
+            git pull origin Release
+            dotnet publish -c Release -o publish
+            sudo systemctl restart bankapi
+
+      # ---------------- FRONTEND ----------------
+      - name: Deploy Frontend
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_KEY }}
+          script: |
+            cd /var/www/react-app
+            git pull origin Release
+            cd frontend
+            npm install
+            npm run build
+            sudo rm -rf /var/www/react-app/*
+            sudo cp -r build/* /var/www/react-app/
+            sudo systemctl restart nginx
