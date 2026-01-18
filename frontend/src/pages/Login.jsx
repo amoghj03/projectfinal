@@ -103,7 +103,7 @@ const Login = () => {
               <AccountBalance sx={{ fontSize: 40 }} />
             </Avatar>
             <Typography variant="h4" component="h1" gutterBottom>
-              BanciFy
+              Bancify
             </Typography>
             <Typography variant="subtitle1" color="text.secondary">
               Employee Management Portal
