@@ -21,9 +21,11 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_KEY }}
           script: |
-            cd /root/var/www/dotnet-api/backend
-            git pull origin Release
-            dotnet publish -c Release -o publish
+            cd /root/var/repos/myapp/backend
+            git pull origin main
+            dotnet publish -c Release -o /tmp/bankapi_publish
+            sudo rm -rf /root/var/www/dotnet-api/backend/publish/*
+            sudo cp -r /tmp/bankapi_publish/* /root/var/www/dotnet-api/backend/publish/
             sudo systemctl restart bankapi
 
       # ---------------- FRONTEND ----------------
