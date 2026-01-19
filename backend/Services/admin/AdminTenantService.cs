@@ -627,4 +627,156 @@ public class AdminTenantService
             }
         };
     }
+
+    /// <summary>
+    /// Get tenant by ID with all details
+    /// </summary>
+    public async Task<object?> GetTenantByIdAsync(long tenantId)
+    {
+        var tenant = await _context.Set<Tenant>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == tenantId);
+
+        if (tenant == null)
+            return null;
+
+        // Get branches separately without the tenant reference
+        var branches = await _context.Set<Branch>()
+            .Where(b => b.TenantId == tenantId)
+            .AsNoTracking()
+            .Select(b => new
+            {
+                b.Id,
+                b.TenantId,
+                b.Name,
+                b.Code,
+                b.Address,
+                b.City,
+                b.State,
+                b.Country,
+                b.Phone,
+                b.Email,
+                b.IsActive,
+                b.CreatedAt,
+                b.UpdatedAt
+            })
+            .ToListAsync();
+
+        // Return anonymous object with tenant data and branches without circular reference
+        return new
+        {
+            tenant.Id,
+            tenant.Name,
+            tenant.Slug,
+            tenant.Domain,
+            tenant.Subdomain,
+            tenant.LogoUrl,
+            tenant.ContactEmail,
+            tenant.ContactPhone,
+            tenant.Address,
+            tenant.City,
+            tenant.State,
+            tenant.Country,
+            tenant.Timezone,
+            tenant.Currency,
+            tenant.Settings,
+            tenant.SubscriptionPlan,
+            tenant.SubscriptionStatus,
+            tenant.SubscriptionExpiresAt,
+            tenant.MaxEmployees,
+            tenant.MaxBranches,
+            tenant.IsActive,
+            tenant.OnboardedAt,
+            tenant.CreatedAt,
+            tenant.UpdatedAt,
+            Branches = branches,
+            Users = new List<object>()
+        };
+    }
+
+    /// <summary>
+    /// Renew tenant subscription or update limits
+    /// </summary>
+    public async Task<TenantOnboardingResponseDto> RenewTenantSubscriptionAsync(long tenantId, TenantRenewalDto request)
+    {
+        var response = new TenantOnboardingResponseDto();
+
+        try
+        {
+            var tenant = await _context.Set<Tenant>()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Id == tenantId);
+
+            if (tenant == null)
+            {
+                response.Success = false;
+                response.Message = "Tenant not found";
+                return response;
+            }
+
+            var utcNow = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+
+            var updateBuilder = _context.Set<Tenant>()
+                .Where(t => t.Id == tenantId)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(t => t.MaxEmployees, request.MaxEmployees)
+                    .SetProperty(t => t.MaxBranches, request.MaxBranches)
+                    .SetProperty(t => t.UpdatedAt, utcNow)
+                );
+
+            string message = "";
+
+            // Only extend subscription if subscriptionDays > 0
+            if (request.SubscriptionDays > 0)
+            {
+                var currentExpiration = tenant.SubscriptionExpiresAt ?? DateTime.UtcNow;
+                var newExpirationDate = currentExpiration.AddDays(request.SubscriptionDays);
+
+                // Ensure the new expiration date is UTC
+                if (newExpirationDate.Kind != DateTimeKind.Utc)
+                {
+                    newExpirationDate = DateTime.SpecifyKind(newExpirationDate, DateTimeKind.Utc);
+                }
+
+                // Update subscription details as well
+                updateBuilder = _context.Set<Tenant>()
+                    .Where(t => t.Id == tenantId)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(t => t.MaxEmployees, request.MaxEmployees)
+                        .SetProperty(t => t.MaxBranches, request.MaxBranches)
+                        .SetProperty(t => t.SubscriptionPlan, request.SubscriptionPlan ?? tenant.SubscriptionPlan)
+                        .SetProperty(t => t.SubscriptionStatus, "active")
+                        .SetProperty(t => t.SubscriptionExpiresAt, newExpirationDate)
+                        .SetProperty(t => t.UpdatedAt, utcNow)
+                    );
+
+                message = $"Subscription renewed until {newExpirationDate:yyyy-MM-dd}. ";
+            }
+
+            await updateBuilder;
+
+            message += $"Max employees updated to {request.MaxEmployees}, max branches updated to {request.MaxBranches}.";
+
+            response.Success = true;
+            response.TenantId = tenantId;
+            response.Message = message;
+
+            return response;
+        }
+        catch (Exception ex)
+        {
+            response.Success = false;
+            response.Message = "An error occurred while updating tenant";
+            var errorMessage = ex.Message;
+
+            // Get inner exception details if available
+            if (ex.InnerException != null)
+            {
+                errorMessage += " - " + ex.InnerException.Message;
+            }
+
+            response.Errors = new List<string> { errorMessage };
+            return response;
+        }
+    }
 }

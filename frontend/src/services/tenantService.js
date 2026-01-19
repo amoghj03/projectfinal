@@ -128,6 +128,37 @@ class TenantService {
       throw new Error(message);
     }
   }
+
+  /**
+   * Get tenant details by ID
+   * @param {number} tenantId - The tenant ID
+   * @returns {Promise<Object>} Tenant details
+   */
+  async getTenantById(tenantId) {
+    try {
+      const response = await axiosInstance.get(`/admin/AdminTenant/${tenantId}`);
+      return response.data;
+    } catch (error) {
+      const message = error.response?.data?.message || error.message || 'Failed to fetch tenant details';
+      throw new Error(message);
+    }
+  }
+
+  /**
+   * Renew tenant subscription
+   * @param {number} tenantId - The tenant ID
+   * @param {Object} renewalData - Renewal data (subscriptionPlan, subscriptionDays, maxEmployees, maxBranches)
+   * @returns {Promise<Object>} Renewal result
+   */
+  async renewTenantSubscription(tenantId, renewalData) {
+    try {
+      const response = await axiosInstance.put(`/admin/AdminTenant/${tenantId}/renew-subscription`, renewalData);
+      return response.data;
+    } catch (error) {
+      const message = error.response?.data?.message || error.message || 'Failed to renew subscription';
+      throw new Error(message);
+    }
+  }
 }
 
 const tenantService = new TenantService();

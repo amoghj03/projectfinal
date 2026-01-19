@@ -107,6 +107,17 @@ const TenantOnboarding = () => {
     roles: [],
   });
 
+  // Tenant details and renewal states
+  const [selectedTenantForDetails, setSelectedTenantForDetails] = useState(null);
+  const [loadingTenantDetails, setLoadingTenantDetails] = useState(false);
+  const [renewalForm, setRenewalForm] = useState({
+    subscriptionPlan: 'basic',
+    subscriptionDays: 30,
+    maxEmployees: 50,
+    maxBranches: 5,
+  });
+  const [showRenewDialog, setShowRenewDialog] = useState(false);
+
   // Form data state
   const [formData, setFormData] = useState({
     tenant: {
@@ -1440,6 +1451,60 @@ const TenantOnboarding = () => {
     }
   };
 
+  const handleLoadTenantDetails = async (tenant) => {
+    setSelectedTenantForDetails(tenant);
+    setLoadingTenantDetails(true);
+    setError('');
+
+    try {
+      const details = await tenantService.getTenantById(tenant.id);
+      setSelectedTenantForDetails(details);
+      // Initialize renewal form with current tenant data
+      setRenewalForm({
+        subscriptionPlan: details.subscriptionPlan || 'basic',
+        subscriptionDays: 30,
+        maxEmployees: details.maxEmployees || 50,
+        maxBranches: details.maxBranches || 5,
+      });
+    } catch (error) {
+      setError(error.message || 'Failed to load tenant details');
+      setSelectedTenantForDetails(null);
+    } finally {
+      setLoadingTenantDetails(false);
+    }
+  };
+
+  const handleRenewSubscription = async () => {
+    if (!selectedTenantForDetails) {
+      setError('Please select a tenant first');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const result = await tenantService.renewTenantSubscription(
+        selectedTenantForDetails.id,
+        renewalForm
+      );
+
+      if (result.success || result.data) {
+        setSuccess(`Subscription renewed successfully for ${selectedTenantForDetails.name}!`);
+        // Reload tenant details
+        await handleLoadTenantDetails(selectedTenantForDetails);
+        setShowRenewDialog(false);
+      } else {
+        setError(result.message || 'Failed to renew subscription');
+      }
+    } catch (error) {
+      setError(error.message || 'Failed to renew subscription');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
     setError('');
@@ -1827,6 +1892,427 @@ const TenantOnboarding = () => {
     );
   };
 
+  const renderTenantDetailsTab = () => {
+    return (
+      <Box sx={{ mt: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          <Business sx={{ verticalAlign: 'middle', mr: 1 }} />
+          Select Tenant & View Details
+        </Typography>
+
+        <Grid container spacing={3} sx={{ mt: 2 }}>
+          <Grid item xs={12}>
+            <Autocomplete
+              options={tenants}
+              getOptionLabel={(option) => `${option.name} (${option.slug})`}
+              value={selectedTenantForDetails}
+              onChange={(event, newValue) => {
+                if (newValue) {
+                  handleLoadTenantDetails(newValue);
+                } else {
+                  setSelectedTenantForDetails(null);
+                  setError('');
+                }
+              }}
+              loading={loadingTenants}
+              noOptionsText={loadingTenants ? "Loading tenants..." : "No tenants found"}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Select Tenant"
+                  required
+                  helperText={`Choose the tenant to view details (${tenants.length} tenant${tenants.length !== 1 ? 's' : ''} available)`}
+                  InputProps={{
+                    ...params.InputProps,
+                    endAdornment: (
+                      <>
+                        {loadingTenants ? <CircularProgress color="inherit" size={20} /> : null}
+                        {params.InputProps.endAdornment}
+                      </>
+                    ),
+                  }}
+                />
+              )}
+            />
+          </Grid>
+
+          {loadingTenantDetails && (
+            <Grid item xs={12}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                <CircularProgress />
+              </Box>
+            </Grid>
+          )}
+
+          {selectedTenantForDetails && !loadingTenantDetails && (
+            <>
+              {/* Tenant Information Section */}
+              <Grid item xs={12}>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="h6" gutterBottom>
+                  <Business sx={{ verticalAlign: 'middle', mr: 1 }} />
+                  Tenant Information
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography color="textSecondary" gutterBottom>
+                      Tenant Name
+                    </Typography>
+                    <Typography variant="h6">{selectedTenantForDetails.name}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography color="textSecondary" gutterBottom>
+                      Slug
+                    </Typography>
+                    <Typography variant="h6">{selectedTenantForDetails.slug}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography color="textSecondary" gutterBottom>
+                      Contact Email
+                    </Typography>
+                    <Typography variant="body2">{selectedTenantForDetails.contactEmail}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography color="textSecondary" gutterBottom>
+                      Contact Phone
+                    </Typography>
+                    <Typography variant="body2">{selectedTenantForDetails.contactPhone || 'N/A'}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography color="textSecondary" gutterBottom>
+                      Active Status
+                    </Typography>
+                    <Chip
+                      label={selectedTenantForDetails.isActive ? 'Active' : 'Inactive'}
+                      color={selectedTenantForDetails.isActive ? 'success' : 'error'}
+                      variant="outlined"
+                    />
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography color="textSecondary" gutterBottom>
+                      Onboarded On
+                    </Typography>
+                    <Typography variant="body2">
+                      {new Date(selectedTenantForDetails.onboardedAt).toLocaleDateString()}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              {/* Subscription Information Section */}
+              <Grid item xs={12}>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="h6" gutterBottom>
+                  <EventAvailable sx={{ verticalAlign: 'middle', mr: 1 }} />
+                  Subscription Details
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography color="textSecondary" gutterBottom>
+                      Subscription Plan
+                    </Typography>
+                    <Typography variant="h6">
+                      {selectedTenantForDetails.subscriptionPlan?.charAt(0).toUpperCase() + selectedTenantForDetails.subscriptionPlan?.slice(1) || 'N/A'}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography color="textSecondary" gutterBottom>
+                      Subscription Status
+                    </Typography>
+                    <Chip
+                      label={selectedTenantForDetails.subscriptionStatus || 'N/A'}
+                      color={
+                        selectedTenantForDetails.subscriptionStatus === 'active'
+                          ? 'success'
+                          : selectedTenantForDetails.subscriptionStatus === 'trial'
+                          ? 'info'
+                          : 'warning'
+                      }
+                      variant="outlined"
+                    />
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography color="textSecondary" gutterBottom>
+                      Expires On
+                    </Typography>
+                    <Typography variant="h6">
+                      {selectedTenantForDetails.subscriptionExpiresAt
+                        ? new Date(selectedTenantForDetails.subscriptionExpiresAt).toLocaleDateString()
+                        : 'N/A'}
+                    </Typography>
+                    {selectedTenantForDetails.subscriptionExpiresAt && (
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color:
+                            new Date(selectedTenantForDetails.subscriptionExpiresAt) < new Date()
+                              ? 'error.main'
+                              : 'success.main',
+                        }}
+                      >
+                        {new Date(selectedTenantForDetails.subscriptionExpiresAt) < new Date()
+                          ? '(Expired)'
+                          : `(${Math.ceil((new Date(selectedTenantForDetails.subscriptionExpiresAt) - new Date()) / (1000 * 60 * 60 * 24))} days remaining)`}
+                      </Typography>
+                    )}
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography color="textSecondary" gutterBottom>
+                      Max Employees & Branches
+                    </Typography>
+                    <Typography variant="body2">
+                      Employees: {selectedTenantForDetails.maxEmployees} | Branches: {selectedTenantForDetails.maxBranches}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              {/* Address Information */}
+              {(selectedTenantForDetails.address ||
+                selectedTenantForDetails.city ||
+                selectedTenantForDetails.state ||
+                selectedTenantForDetails.country) && (
+                <>
+                  <Grid item xs={12}>
+                    <Divider sx={{ my: 2 }} />
+                    <Typography variant="h6" gutterBottom>
+                      <Apartment sx={{ verticalAlign: 'middle', mr: 1 }} />
+                      Address Information
+                    </Typography>
+                  </Grid>
+
+                  {selectedTenantForDetails.address && (
+                    <Grid item xs={12}>
+                      <Card variant="outlined">
+                        <CardContent>
+                          <Typography color="textSecondary" gutterBottom>
+                            Address
+                          </Typography>
+                          <Typography variant="body2">{selectedTenantForDetails.address}</Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  )}
+
+                  <Grid item xs={12} md={4}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Typography color="textSecondary" gutterBottom>
+                          City
+                        </Typography>
+                        <Typography variant="body2">{selectedTenantForDetails.city || 'N/A'}</Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+
+                  <Grid item xs={12} md={4}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Typography color="textSecondary" gutterBottom>
+                          State
+                        </Typography>
+                        <Typography variant="body2">{selectedTenantForDetails.state || 'N/A'}</Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+
+                  <Grid item xs={12} md={4}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Typography color="textSecondary" gutterBottom>
+                          Country
+                        </Typography>
+                        <Typography variant="body2">{selectedTenantForDetails.country || 'N/A'}</Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                </>
+              )}
+
+              {/* Branches Count */}
+              <Grid item xs={12}>
+                <Divider sx={{ my: 2 }} />
+                <Card variant="outlined">
+                  <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Box>
+                        <Typography color="textSecondary" gutterBottom>
+                          Total Branches
+                        </Typography>
+                        <Typography variant="h6">
+                          {selectedTenantForDetails.branches?.length || 0}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              {/* Renewal Button */}
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={() => setShowRenewDialog(true)}
+                    disabled={loading}
+                    startIcon={<EventAvailable />}
+                  >
+                    Update Subscription & Limits
+                  </Button>
+                </Box>
+              </Grid>
+            </>
+          )}
+        </Grid>
+
+        {/* Renewal Dialog */}
+        <Dialog open={showRenewDialog} onClose={() => setShowRenewDialog(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>Update Subscription & Limits</DialogTitle>
+          <DialogContent sx={{ pt: 3 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                  Subscription Renewal (Optional)
+                </Typography>
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Subscription Plan"
+                  value={renewalForm.subscriptionPlan}
+                  onChange={(e) =>
+                    setRenewalForm({ ...renewalForm, subscriptionPlan: e.target.value })
+                  }
+                >
+                  <MenuItem value="basic">Basic</MenuItem>
+                  <MenuItem value="standard">Standard</MenuItem>
+                  <MenuItem value="premium">Premium</MenuItem>
+                  <MenuItem value="enterprise">Enterprise</MenuItem>
+                </TextField>
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Subscription Days"
+                  value={renewalForm.subscriptionDays}
+                  onChange={(e) =>
+                    setRenewalForm({
+                      ...renewalForm,
+                      subscriptionDays: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  inputProps={{ min: 0, max: 365 }}
+                  helperText="Days to extend subscription (0 = no renewal, 1-365 = extend)"
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <Divider sx={{ my: 1 }} />
+              </Grid>
+
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                  Tenant Limits
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Max Employees"
+                  value={renewalForm.maxEmployees}
+                  onChange={(e) =>
+                    setRenewalForm({
+                      ...renewalForm,
+                      maxEmployees: parseInt(e.target.value) || 50,
+                    })
+                  }
+                  inputProps={{ min: 1 }}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Max Branches"
+                  value={renewalForm.maxBranches}
+                  onChange={(e) =>
+                    setRenewalForm({
+                      ...renewalForm,
+                      maxBranches: parseInt(e.target.value) || 5,
+                    })
+                  }
+                  inputProps={{ min: 1 }}
+                />
+              </Grid>
+            </Grid>
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button onClick={() => setShowRenewDialog(false)}>Cancel</Button>
+            <Button
+              variant="contained"
+              onClick={handleRenewSubscription}
+              disabled={loading}
+              startIcon={loading ? <CircularProgress size={20} /> : null}
+            >
+              {loading ? 'Updating...' : 'Update'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
+    );
+  };
+
   return (
     <AdminLayout>
       <Box>
@@ -1843,6 +2329,7 @@ const TenantOnboarding = () => {
               <Tab label="Onboard New Tenant" />
               <Tab label="Add Branch to Tenant" />
               <Tab label="Add Employee to Tenant" />
+              <Tab label="Tenant Details & Renewal" />
             </Tabs>
           </Box>
 
@@ -1919,6 +2406,7 @@ const TenantOnboarding = () => {
 
           {tabValue === 1 && renderAddBranchTab()}
           {tabValue === 2 && renderAddEmployeeTab()}
+          {tabValue === 3 && renderTenantDetailsTab()}
         </Paper>
       </Box>
     </AdminLayout>
