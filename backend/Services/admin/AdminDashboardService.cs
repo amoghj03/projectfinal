@@ -76,21 +76,18 @@ namespace BankAPI.Services.Admin
             // Get open complaints (only "Open" status, not "In Progress")
             var openComplaints = await _context.Complaints
                 .Where(c => c.TenantId == tenantId &&
-                           employeeIds.Contains(c.EmployeeId) &&
                            c.Status == "Open")
                 .CountAsync();
 
             // Get pending tech issues
             var techIssuesPending = await _context.TechIssues
                 .Where(ti => ti.TenantId == tenantId &&
-                            employeeIds.Contains(ti.EmployeeId) &&
-                            (ti.Status == "Pending" || ti.Status == "In Progress"))
+                            ti.Status == "Approval Pending")
                 .CountAsync();
 
             // Get pending leave requests
             var leaveRequestsPending = await _context.LeaveRequests
                 .Where(lr => lr.TenantId == tenantId &&
-                            employeeIds.Contains(lr.EmployeeId) &&
                             lr.Status == "Pending")
                 .CountAsync();
 

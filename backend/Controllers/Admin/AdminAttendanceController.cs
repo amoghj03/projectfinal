@@ -33,12 +33,26 @@ public class AdminAttendanceController : BaseApiController
     {
         try
         {
+            var employeeIdFromAuth = GetEmployeeIdFromAuth();
+            if (employeeIdFromAuth == 0)
+            {
+                return Unauthorized(new { message = "Invalid authentication token" });
+            }
+
+            // Get tenant ID from authenticated employee
+            var employee = await _context.Employees.FindAsync(employeeIdFromAuth);
+            if (employee == null)
+            {
+                return Unauthorized(new { message = "Employee not found" });
+            }
+
             var request = new DailyAttendanceRequest
             {
                 Date = date,
                 Branch = branch,
                 Department = department,
-                EmployeeId = employeeId
+                EmployeeId = employeeId,
+                TenantId = employee.TenantId
             };
 
             var data = await _adminAttendanceService.GetDailyAttendance(request);
@@ -76,12 +90,26 @@ public class AdminAttendanceController : BaseApiController
     {
         try
         {
+            var employeeIdFromAuth = GetEmployeeIdFromAuth();
+            if (employeeIdFromAuth == 0)
+            {
+                return Unauthorized(new { message = "Invalid authentication token" });
+            }
+
+            // Get tenant ID from authenticated employee
+            var employee = await _context.Employees.FindAsync(employeeIdFromAuth);
+            if (employee == null)
+            {
+                return Unauthorized(new { message = "Employee not found" });
+            }
+
             var request = new MonthlyAttendanceRequest
             {
                 Month = month,
                 Branch = branch,
                 Department = department,
-                EmployeeId = employeeId
+                EmployeeId = employeeId,
+                TenantId = employee.TenantId
             };
 
             var response = await _adminAttendanceService.GetMonthlyAttendance(request);

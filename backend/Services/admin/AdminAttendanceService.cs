@@ -24,10 +24,10 @@ namespace BankAPI.Services.Admin
                 ? DateOnly.FromDateTime(DateTime.UtcNow)
                 : DateOnly.Parse(request.Date);
 
-            // Start with all employees
+            // Start with employees filtered by tenant
             var query = _context.Employees
                 .Include(e => e.Branch)
-                .Where(e => e.Status == "Active");
+                .Where(e => e.TenantId == request.TenantId && e.Status == "Active");
 
             // Apply branch filter
             if (!string.IsNullOrEmpty(request.Branch))
@@ -148,12 +148,7 @@ namespace BankAPI.Services.Admin
                 lastDayToCount = today;
             }
 
-            // Start with all employees to get tenant ID
-            var firstEmployee = await _context.Employees
-                .Where(e => e.Status == "Active")
-                .FirstOrDefaultAsync();
-
-            long tenantId = firstEmployee?.TenantId ?? 0;
+            long tenantId = request.TenantId;
 
             // Check if organization works on weekends
             var noWeekendsSetting = await _context.Settings
@@ -180,10 +175,10 @@ namespace BankAPI.Services.Admin
                 }
             }
 
-            // Start with all employees
+            // Start with employees filtered by tenant
             var query = _context.Employees
                 .Include(e => e.Branch)
-                .Where(e => e.Status == "Active");
+                .Where(e => e.TenantId == tenantId && e.Status == "Active");
 
             // Apply branch filter
             if (!string.IsNullOrEmpty(request.Branch))
@@ -205,9 +200,9 @@ namespace BankAPI.Services.Admin
 
             var employees = await query.ToListAsync();
 
-            // Get all attendance records for the month (up to today if current month)
+            // Get all attendance records for the month (up to today if current month) - filtered by tenant
             var attendances = await _context.Attendances
-                .Where(a => a.Date >= startDate && a.Date <= lastDayToCount)
+                .Where(a => a.TenantId == tenantId && a.Date >= startDate && a.Date <= lastDayToCount)
                 .ToListAsync();
 
             // Group attendances by employee

@@ -44,6 +44,7 @@ public class DailyAttendanceRequest
     public string? Branch { get; set; }
     public string? Department { get; set; }
     public string? EmployeeId { get; set; }
+    public long TenantId { get; set; }
 }
 
 /// <summary>
@@ -55,6 +56,7 @@ public class MonthlyAttendanceRequest
     public string? Branch { get; set; }
     public string? Department { get; set; }
     public string? EmployeeId { get; set; }
+    public long TenantId { get; set; }
 }
 
 /// <summary>
