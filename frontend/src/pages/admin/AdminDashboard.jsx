@@ -463,6 +463,40 @@ const AdminDashboard = () => {
                   day: 'numeric' 
                 })}
               </Typography>
+              {stats?.subscriptionEndDate && (() => {
+                const endDate = new Date(stats.subscriptionEndDate);
+                const today = new Date();
+                const daysUntilExpiry = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
+                
+                let statusColor = 'success.main'; // Green - healthy
+                let statusText = '';
+                
+                if (daysUntilExpiry <= 0) {
+                  statusColor = 'error.main'; // Red - expired
+                  statusText = ' (EXPIRED)';
+                } else if (daysUntilExpiry <= 30) {
+                  statusColor = 'warning.main'; // Yellow/Orange - nearing expiry
+                  statusText = ` (${daysUntilExpiry} days remaining)`;
+                }
+                
+                return (
+                  <Typography 
+                    variant="body2" 
+                    sx={{ 
+                      mt: 1,
+                      color: statusColor,
+                      fontWeight: 600
+                    }}
+                  >
+                    Subscription End Date: {endDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}{statusText}
+                  </Typography>
+                );
+              })()}
+              {!stats?.subscriptionEndDate && (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  Subscription End Date: N/A
+                </Typography>
+              )}
             </Box>
             <Box sx={{ textAlign: 'right' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>

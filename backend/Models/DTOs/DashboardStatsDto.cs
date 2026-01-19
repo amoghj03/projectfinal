@@ -54,5 +54,6 @@ namespace BankAPI.Models.DTOs
         public int LeaveRequestsPending { get; set; }
         public int TechIssuesPending { get; set; }
         public decimal AttendanceRate { get; set; }
+        public DateTime? SubscriptionEndDate { get; set; }
     }
 }

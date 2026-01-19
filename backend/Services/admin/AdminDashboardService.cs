@@ -28,6 +28,10 @@ namespace BankAPI.Services.Admin
 
             var tenantId = employee.TenantId;
 
+            // Get tenant subscription end date
+            var tenant = await _context.Tenants.FindAsync(tenantId);
+            var subscriptionEndDate = tenant?.SubscriptionExpiresAt;
+
             // Build query for employees, filtering by branch if provided
             var employeesQuery = _context.Employees
                 .Where(e => e.TenantId == tenantId && e.Status == "Active");
@@ -115,7 +119,8 @@ namespace BankAPI.Services.Admin
                 MonthlyTestAvg = monthlyTestAvg,
                 LeaveRequestsPending = leaveRequestsPending,
                 TechIssuesPending = techIssuesPending,
-                AttendanceRate = attendanceRate
+                AttendanceRate = attendanceRate,
+                SubscriptionEndDate = subscriptionEndDate
             };
         }
     }
