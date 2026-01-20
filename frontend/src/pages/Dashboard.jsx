@@ -74,7 +74,7 @@ const Layout = ({ children }) => {
     navigate('/admin/dashboard');
   };
 
-  // All menu items with their permission requirements
+  // All menu items with their permission requirements (except Profile)
   const allMenuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', permission: 'dashboard' },
     { text: 'Employee Tracking', icon: <PersonOutline />, path: '/employee-tracking', permission: 'attendance' },
@@ -84,7 +84,7 @@ const Layout = ({ children }) => {
     { text: 'Tech Issues Register', icon: <BugReport />, path: '/tech-issues', permission: 'techIssues' },
   ];
 
-  // Filter menu items based on permissions
+  // Filter menu items based on permissions (except Profile)
   const menuItems = allMenuItems.filter(item => employeePermissions[item.permission] === true);
 
   const handleDrawerToggle = () => {
@@ -141,6 +141,24 @@ const Layout = ({ children }) => {
           </ListItem>
         ))}
       </List>
+
+      {/* Profile menu item just above admin navigation */}
+      <Divider sx={{ mx: 2, my: 1 }} />
+      <List sx={{ px: 1, py: 0 }}>
+        <ListItem disablePadding>
+          <ListItemButton
+            selected={location.pathname === '/profile'}
+            onClick={() => navigate('/profile')}
+            sx={{ borderRadius: 2, mb: 0.5 }}
+          >
+            <ListItemIcon sx={{ color: 'inherit' }}>
+              <PersonOutline />
+            </ListItemIcon>
+            <ListItemText primary="Profile" />
+          </ListItemButton>
+        </ListItem>
+      </List>
+      <Divider sx={{ mx: 2, my: 1 }} />
 
       <Divider sx={{ mx: 2 }} />
 

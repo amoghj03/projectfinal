@@ -103,6 +103,14 @@ function  App() {
           <Route path="/" element={<Login />} />
           
           {/* Protected Routes */}
+                    <Route 
+                      path="/profile" 
+                      element={
+                        <EmployeeProtectedRoute>
+                          {React.createElement(require('./pages/Profile').default)}
+                        </EmployeeProtectedRoute>
+                      } 
+                    />
           <Route 
             path="/dashboard" 
             element={

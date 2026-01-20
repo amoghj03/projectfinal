@@ -17,6 +17,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Register application services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ILeaveService, LeaveService>();
+builder.Services.AddScoped<IProfileService, ProfileService>();
 builder.Services.AddScoped<ComplaintService>();
 builder.Services.AddScoped<TechIssueService>();
 builder.Services.AddScoped<AttendanceService>();

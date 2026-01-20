@@ -31,28 +31,35 @@ namespace BankAPI.Services
 
         private async Task<AttendanceStatsDto> GetAttendanceStatsAsync(long employeeId)
         {
-            var currentMonth = DateTime.UtcNow.Month;
-            var currentYear = DateTime.UtcNow.Year;
+            var now = DateTime.UtcNow;
+            var currentMonth = now.Month;
+            var currentYear = now.Year;
 
-            // Current month attendance
+            // Get all attendance records for the employee for the current month
             var currentAttendance = await _context.Attendances
                 .Where(a => a.EmployeeId == employeeId &&
                            a.Date.Month == currentMonth &&
                            a.Date.Year == currentYear)
                 .ToListAsync();
 
-            var totalDays = currentAttendance.Count;
             var presentDays = currentAttendance.Count(a => a.Status == "Present");
             var absentDays = currentAttendance.Count(a => a.Status == "Absent");
 
-            var attendanceRate = totalDays > 0
-                ? Math.Round((decimal)presentDays / totalDays * 100, 1)
+
+            // Calculate total working days from 1st of month up to today (excluding weekends)
+            int today = now.Day;
+            int totalWorkingDays = Enumerable.Range(1, today)
+                .Select(day => new DateTime(currentYear, currentMonth, day))
+                .Count(date => date.DayOfWeek != DayOfWeek.Saturday && date.DayOfWeek != DayOfWeek.Sunday);
+
+            var attendanceRate = totalWorkingDays > 0
+                ? Math.Round((decimal)presentDays / totalWorkingDays * 100, 1)
                 : 0;
 
             return new AttendanceStatsDto
             {
                 AttendanceRate = attendanceRate,
-                TotalDays = totalDays,
+                TotalDays = totalWorkingDays,
                 PresentDays = presentDays,
                 AbsentDays = absentDays
             };
