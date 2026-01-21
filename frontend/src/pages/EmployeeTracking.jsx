@@ -106,13 +106,18 @@ const EmployeeTracking = () => {
         const attendance = response.data;
         if (attendance.checkInTime) {
           setCheckedIn(true);
-          // API returns time already formatted (e.g., "02:04 PM")
           setCheckInTime(attendance.checkInTime);
         }
         if (attendance.checkOutTime) {
           setCheckedOut(true);
-          // API returns time already formatted (e.g., "03:24 PM")
           setCheckOutTime(attendance.checkOutTime);
+        }
+        // Check for productivity rating
+        if (attendance.productivityRating !== undefined && attendance.productivityRating !== null) {
+          setDailyRating(attendance.productivityRating);
+          setRatingSubmitted(true);
+        } else {
+          setRatingSubmitted(false);
         }
       }
     } catch (error) {
@@ -300,10 +305,27 @@ const EmployeeTracking = () => {
     }
   };
 
-  const submitRating = () => {
-    const today = new Date().toISOString().split('T')[0];
-    localStorage.setItem(`rating_${today}`, dailyRating.toString());
-    setRatingSubmitted(true);
+  const submitRating = async () => {
+    setLoading(true);
+    try {
+      // Check if checked in (attendance marked)
+      if (!checkedIn) {
+        showSnackbar('Please mark your attendance before submitting the rating.', 'warning');
+        setLoading(false);
+        return;
+      }
+      const response = await attendanceService.updateProductivityRating(dailyRating);
+      if (response.success) {
+        setRatingSubmitted(true);
+        showSnackbar('Rating submitted successfully!', 'success');
+      } else {
+        showSnackbar(response.message || 'Failed to submit rating', 'error');
+      }
+    } catch (error) {
+      showSnackbar('Failed to submit rating', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getTotalHours = () => {

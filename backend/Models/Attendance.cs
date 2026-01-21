@@ -47,6 +47,9 @@ public class Attendance
     [Column("updated_at")]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    [Column("dailyproductivityrating")]
+    public int? ProductivityRating { get; set; }
+
     // Navigation properties
     [ForeignKey("TenantId")]
     public virtual Tenant Tenant { get; set; } = null!;

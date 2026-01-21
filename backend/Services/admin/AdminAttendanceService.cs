@@ -111,7 +111,8 @@ namespace BankAPI.Services.Admin
                     WorkHours = attendance?.WorkHours,
                     Location = attendance?.Location,
                     Notes = notes,
-                    Date = targetDate.ToString("yyyy-MM-dd")
+                    Date = targetDate.ToString("yyyy-MM-dd"),
+                    ProductivityRating = attendance?.ProductivityRating
                 };
             }).ToList();
 
@@ -298,7 +299,8 @@ namespace BankAPI.Services.Admin
                     Status = a.Status,
                     WorkHours = a.WorkHours,
                     Location = a.Location,
-                    Notes = a.Notes
+                    Notes = a.Notes,
+                    ProductivityRating = a.ProductivityRating
                 })
                 .ToListAsync();
 

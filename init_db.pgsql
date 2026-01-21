@@ -791,7 +791,7 @@ CREATE TABLE public.work_logs (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
-
+Alter table Attendance add column DailyProductivityRating integer;
 
 ALTER TABLE public.work_logs OWNER TO admin;
 

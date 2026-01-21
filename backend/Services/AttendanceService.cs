@@ -38,7 +38,8 @@ namespace BankAPI.Services
                 CheckInTime = attendance.CheckInTime?.ToString("hh:mm tt"),
                 CheckOutTime = attendance.CheckOutTime?.ToString("hh:mm tt"),
                 Status = attendance.Status,
-                WorkHours = attendance.WorkHours
+                WorkHours = attendance.WorkHours,
+                ProductivityRating = attendance.ProductivityRating
             };
         }
 
@@ -168,7 +169,8 @@ namespace BankAPI.Services
                     Status = a.Status,
                     WorkHours = a.WorkHours,
                     Location = a.Location,
-                    Notes = a.Notes
+                    Notes = a.Notes,
+                    ProductivityRating = a.ProductivityRating
                 })
                 .ToListAsync();
 
@@ -221,6 +223,32 @@ namespace BankAPI.Services
                 Date = attendance.Date.ToString("yyyy-MM-dd"),
                 Status = attendance.Status,
                 WorkHours = attendance.WorkHours
+            };
+        }
+        public async Task<AttendanceDto> UpdateProductivityRating(long employeeId, int rating)
+        {
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var attendance = await _context.Attendances
+                .Where(a => a.EmployeeId == employeeId && a.Date == today)
+                .FirstOrDefaultAsync();
+            if (attendance == null)
+            {
+                throw new InvalidOperationException("Please mark your attendance before submitting the rating.");
+            }
+            attendance.ProductivityRating = rating;
+            attendance.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return new AttendanceDto
+            {
+                Id = attendance.Id,
+                Date = attendance.Date.ToString("yyyy-MM-dd"),
+                CheckInTime = attendance.CheckInTime?.ToString("hh:mm tt"),
+                CheckOutTime = attendance.CheckOutTime?.ToString("hh:mm tt"),
+                Status = attendance.Status,
+                WorkHours = attendance.WorkHours,
+                Location = attendance.Location,
+                Notes = attendance.Notes,
+                ProductivityRating = attendance.ProductivityRating
             };
         }
     }

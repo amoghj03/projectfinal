@@ -160,7 +160,7 @@ const Layout = ({ children }) => {
       </List>
       <Divider sx={{ mx: 2, my: 1 }} />
 
-      <Divider sx={{ mx: 2 }} />
+      {/* <Divider sx={{ mx: 2 }} /> */}
 
       {/* Switch to Admin Panel (for Manager/CEO) */}
       {hasAdminAccess && (
@@ -174,8 +174,8 @@ const Layout = ({ children }) => {
                   color: 'primary.main',
                   backgroundColor: 'primary.lighter',
                   '&:hover': {
-                    backgroundColor: 'primary.light',
-                    color: 'white',
+                    backgroundColor: 'primary.lighter',
+                    color: 'primary.main',
                   }
                 }}
               >

@@ -39,6 +39,19 @@ attendanceApi.interceptors.response.use(
 );
 
 const attendanceService = {
+    // Update productivity rating for today
+    updateProductivityRating: async (rating) => {
+      try {
+        const response = await attendanceApi.post('/Attendance/update-rating', { rating });
+        return response.data;
+      } catch (error) {
+        console.error('Error updating productivity rating:', error);
+        return {
+          success: false,
+          message: error.response?.data?.message || 'Failed to update rating',
+        };
+      }
+    },
   // Get current attendance status
   getTodayAttendance: async () => {
     try {

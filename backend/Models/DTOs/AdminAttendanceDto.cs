@@ -16,6 +16,7 @@ public class DailyAttendanceDto
     public string? Location { get; set; }
     public string? Notes { get; set; }
     public string Date { get; set; } = string.Empty;
+    public int? ProductivityRating { get; set; }
 }
 
 /// <summary>
@@ -33,6 +34,7 @@ public class MonthlyAttendanceDto
     public int AbsentDays { get; set; }
     public decimal AvgHours { get; set; }
     public decimal AttendancePercentage { get; set; }
+    public double? ProductivityRating { get; set; }
 }
 
 /// <summary>

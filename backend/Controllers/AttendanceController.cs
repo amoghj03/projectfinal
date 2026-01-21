@@ -145,4 +145,19 @@ public class AttendanceController : BaseApiController
             return StatusCode(500, new { success = false, message = ex.Message });
         }
     }
+
+    [HttpPost("update-rating")]
+    public async Task<IActionResult> UpdateProductivityRating([FromBody] UpdateRatingRequest request)
+    {
+        try
+        {
+            var employeeId = GetEmployeeIdFromAuth();
+            var result = await _attendanceService.UpdateProductivityRating(employeeId, request.Rating);
+            return Ok(new { success = true, message = "Productivity rating updated", data = result });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
+    }
 }

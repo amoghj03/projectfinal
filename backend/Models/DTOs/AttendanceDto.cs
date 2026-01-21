@@ -19,6 +19,7 @@ public class AttendanceDto
     public decimal? WorkHours { get; set; }
     public string? Location { get; set; }
     public string? Notes { get; set; }
+    public int? ProductivityRating { get; set; }
 }
 
 public class CheckInRequest
@@ -40,4 +41,5 @@ public class TodayAttendanceDto
     public string? CheckOutTime { get; set; }
     public string? Status { get; set; }
     public decimal? WorkHours { get; set; }
+    public int? ProductivityRating { get; set; }
 }

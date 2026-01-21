@@ -66,17 +66,43 @@ const AttendanceManagement = () => {
     const [manualMarkLoading, setManualMarkLoading] = useState(false);
     const [manualMarkError, setManualMarkError] = useState(null);
     // Handler for clicking a calendar day
-    const handleCalendarDayClick = (employee, dayData) => {
+    const handleCalendarDayClick = async (employee, dayData) => {
       const today = new Date();
       const clickedDate = new Date(dayData.date);
-      if (dayData.status === 'present' || dayData.status === 'weekend') return;
-      setManualMarkInfo({ employee, date: dayData.date });
-      if (clickedDate > today) {
-        setManualMarkError('Cannot mark attendance for a future date.');
-      } else {
-        setManualMarkError(null);
+      if (dayData.status === 'weekend') return;
+      if (dayData.status === 'present' || dayData.status === 'late') {
+        // Fetch attendance details for this employee and date
+        try {
+          const response = await attendanceService.getEmployeeAttendanceDetails(employee.employeeId, 36);
+          if (response.success && response.data && (response.data.Attendances || response.data.attendances)) {
+            const attendances = response.data.Attendances || response.data.attendances;
+            // Find the record for the clicked date
+            const record = attendances.find(a => (a.Date || a.date) === dayData.date);
+            if (record) {
+              setSelectedEmployee({
+                ...employee,
+                ...record,
+                date: dayData.date
+              });
+              setDetailsDialog(true);
+              return;
+            }
+          }
+        } catch (err) {
+          // Optionally show error
+        }
+        return;
       }
-      setManualMarkDialog(true);
+      // Only allow manual mark for absent days
+      if (dayData.status === 'absent') {
+        setManualMarkInfo({ employee, date: dayData.date });
+        if (clickedDate > today) {
+          setManualMarkError('Cannot mark attendance for a future date.');
+        } else {
+          setManualMarkError(null);
+        }
+        setManualMarkDialog(true);
+      }
     };
 
     // Handler for confirming manual mark
@@ -1092,7 +1118,8 @@ const AttendanceManagement = () => {
                   <Typography><strong>Check In:</strong> {selectedEmployee.checkInTime || 'Not checked in'}</Typography>
                   <Typography><strong>Check Out:</strong> {selectedEmployee.checkOutTime || 'Not checked out'}</Typography>
                   <Typography><strong>Work Hours:</strong> {selectedEmployee.workHours ? `${selectedEmployee.workHours}h` : 'N/A'}</Typography>
-                  <Typography><strong>Location:</strong> {selectedEmployee.location || 'N/A'}</Typography>
+                  {/*<Typography><strong>Location:</strong> {selectedEmployee.location || 'N/A'}</Typography>*/}
+                  <Typography><strong>Productivity Rating:</strong> {selectedEmployee.productivityRating !== undefined && selectedEmployee.productivityRating !== null ? selectedEmployee.productivityRating : 'N/A'}</Typography>
                 </Grid>
                 <Grid item xs={12}>
                   <Typography variant="h6" gutterBottom>Notes</Typography>
