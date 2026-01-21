@@ -18,6 +18,79 @@ namespace BankAPI.Controllers.Admin
         }
 
         /// <summary>
+        /// Renew or extend a tenant's subscription
+        /// </summary>
+        /// <param name="id">Tenant ID</param>
+        /// <param name="request">Renewal details</param>
+        /// <returns>Renewal result</returns>
+        [HttpPost("{id}/renew-subscription")]
+        [HttpPut("{id}/renew-subscription")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> RenewTenantSubscription(long id, [FromBody] TenantRenewalDto request)
+        {
+            try
+            {
+                var employeeId = GetEmployeeIdFromAuth();
+                if (employeeId == 0)
+                {
+                    return Unauthorized(new { message = "Invalid authentication token" });
+                }
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(new { message = "Invalid renewal data", errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage) });
+                }
+                var result = await _adminTenantService.RenewTenantSubscriptionAsync(id, request);
+                if (!result.Success)
+                {
+                    if (result.Message == "Tenant not found")
+                        return NotFound(result);
+                    return BadRequest(result);
+                }
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while renewing subscription", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get a tenant by ID
+        /// </summary>
+        /// <param name="id">Tenant ID</param>
+        /// <returns>Tenant details</returns>
+        [HttpGet("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetTenantById(long id)
+        {
+            try
+            {
+                var employeeId = GetEmployeeIdFromAuth();
+                if (employeeId == 0)
+                {
+                    return Unauthorized(new { message = "Invalid authentication token" });
+                }
+                var tenant = await _adminTenantService.GetTenantByIdAsync(id);
+                if (tenant == null)
+                {
+                    return NotFound(new { message = $"Tenant with ID {id} not found" });
+                }
+                return Ok(tenant);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while retrieving tenant", error = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Onboard a new tenant with branches, admin user, roles, and leave types
         /// </summary>
         /// <param name="request">Tenant onboarding request</param>
