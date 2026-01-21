@@ -131,4 +131,18 @@ public class AttendanceController : BaseApiController
             });
         }
     }
+
+    [HttpPost("manual-mark")]
+    public async Task<IActionResult> ManualMarkAttendance([FromBody] ManualMarkAttendanceRequest request)
+    {
+        try
+        {
+            var result = await _attendanceService.ManualMarkAttendance(request.EmployeeId, request.Date, request.Status, request.WorkHours);
+            return Ok(new { success = true, message = "Attendance marked successfully", data = result });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
+    }
 }

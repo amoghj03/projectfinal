@@ -156,6 +156,19 @@ const attendanceService = {
       throw error;
     }
   },
+    /**
+   * Manually mark attendance for an employee (admin)
+   * @param {Object} data - { employeeId, date, status, workHours }
+   */
+  markManualAttendance: async (data) => {
+    try {
+      const response = await attendanceApi.post('/Attendance/manual-mark', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error manually marking attendance:', error);
+      throw error;
+    }
+  },
 };
 
 export default attendanceService;

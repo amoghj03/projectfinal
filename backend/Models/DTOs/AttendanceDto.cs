@@ -1,4 +1,13 @@
+
 namespace BankAPI.Models.DTOs;
+
+public class ManualMarkAttendanceRequest
+{
+    public string EmployeeId { get; set; } = string.Empty;
+    public string Date { get; set; } = string.Empty; // yyyy-MM-dd
+    public string Status { get; set; } = string.Empty;
+    public decimal WorkHours { get; set; }
+}
 
 public class AttendanceDto
 {

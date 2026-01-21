@@ -367,10 +367,10 @@ const EmployeeTracking = () => {
             <CircularProgress />
           </Box>
         ) : (
-          <Grid container spacing={3}>
+          <Grid container spacing={3} alignItems="stretch">
           {/* Attendance Section */}
           <Grid item xs={12} md={6}>
-            <Card>
+            <Card sx={{ height: '100%' }}>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
                   <AccessTime sx={{ mr: 2, color: 'primary.main' }} />
@@ -441,12 +441,13 @@ const EmployeeTracking = () => {
 
           {/* Today's Summary */}
           <Grid item xs={12} md={6}>
-            <Card>
+            <Card sx={{ height: '100%' }}>
               <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Today's Summary
-                </Typography>
-                <Box sx={{ mt: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                  <TrendingUp sx={{ mr: 2, color: 'primary.main' }} />
+                  <Typography variant="h6">Today's Summary</Typography>
+                </Box>
+                <Box sx={{ textAlign: 'center', py: 3 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                     <Typography variant="body2">Total Work Hours:</Typography>
                     <Chip label={`${getTotalHours()}h`} color="primary" />

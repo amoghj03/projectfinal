@@ -174,5 +174,54 @@ namespace BankAPI.Services
 
             return attendances;
         }
+
+        public async Task<AttendanceDto> ManualMarkAttendance(string employeeId, string date, string status, decimal workHours)
+        {
+            var employee = await _context.Employees.FirstOrDefaultAsync(e => e.EmployeeId == employeeId);
+            if (employee == null) throw new Exception("Employee not found");
+            var dateObj = DateOnly.Parse(date);
+            if (dateObj > DateOnly.FromDateTime(DateTime.UtcNow))
+                throw new Exception("Cannot mark attendance for a future date.");
+            var attendance = await _context.Attendances.FirstOrDefaultAsync(a => a.EmployeeId == employee.Id && a.Date == dateObj);
+            var now = DateTime.UtcNow;
+            // Set default check-in time to 9:00 AM local time, then convert to UTC
+            var localCheckIn = new DateTime(dateObj.Year, dateObj.Month, dateObj.Day, 9, 0, 0, DateTimeKind.Local);
+            var checkInDateTime = localCheckIn.ToUniversalTime();
+            // Calculate check-out time based on workHours, then convert to UTC
+            var localCheckOut = localCheckIn.AddHours((double)workHours);
+            var checkOutDateTime = localCheckOut.ToUniversalTime();
+            if (attendance == null)
+            {
+                attendance = new Attendance
+                {
+                    TenantId = employee.TenantId,
+                    EmployeeId = employee.Id,
+                    Date = dateObj,
+                    Status = status,
+                    WorkHours = workHours,
+                    CheckInTime = checkInDateTime,
+                    CheckOutTime = checkOutDateTime,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+                _context.Attendances.Add(attendance);
+            }
+            else
+            {
+                attendance.Status = status;
+                attendance.WorkHours = workHours;
+                attendance.CheckInTime = checkInDateTime;
+                attendance.CheckOutTime = checkOutDateTime;
+                attendance.UpdatedAt = now;
+            }
+            await _context.SaveChangesAsync();
+            return new AttendanceDto
+            {
+                Id = attendance.Id,
+                Date = attendance.Date.ToString("yyyy-MM-dd"),
+                Status = attendance.Status,
+                WorkHours = attendance.WorkHours
+            };
+        }
     }
 }

@@ -60,6 +60,47 @@ const TabPanel = ({ children, value, index }) => (
 );
 
 const AttendanceManagement = () => {
+    // Manual attendance marking state
+    const [manualMarkDialog, setManualMarkDialog] = useState(false);
+    const [manualMarkInfo, setManualMarkInfo] = useState({ employee: null, date: null });
+    const [manualMarkLoading, setManualMarkLoading] = useState(false);
+    const [manualMarkError, setManualMarkError] = useState(null);
+    // Handler for clicking a calendar day
+    const handleCalendarDayClick = (employee, dayData) => {
+      const today = new Date();
+      const clickedDate = new Date(dayData.date);
+      if (dayData.status === 'present' || dayData.status === 'weekend') return;
+      setManualMarkInfo({ employee, date: dayData.date });
+      if (clickedDate > today) {
+        setManualMarkError('Cannot mark attendance for a future date.');
+      } else {
+        setManualMarkError(null);
+      }
+      setManualMarkDialog(true);
+    };
+
+    // Handler for confirming manual mark
+    const handleManualMarkConfirm = async () => {
+      setManualMarkLoading(true);
+      setManualMarkError(null);
+      try {
+        await attendanceService.markManualAttendance({
+          employeeId: manualMarkInfo.employee.employeeId,
+          date: manualMarkInfo.date,
+          status: 'present',
+          workHours: 8
+        });
+        setManualMarkDialog(false);
+        setExpandedRow(null); // Close expanded rows
+        setPage(0); // Reset pagination to first page
+        setEmployeeCalendarData({}); // Clear calendar cache if needed
+        await fetchMonthlyAttendance(); // Ensure state is updated before UI renders
+      } catch (err) {
+        setManualMarkError(err?.response?.data?.message || 'Failed to mark attendance');
+      } finally {
+        setManualMarkLoading(false);
+      }
+    };
   const { getEffectiveBranch, isSuperAdmin } = useBranch();
   const [tabValue, setTabValue] = useState(0);
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
@@ -945,18 +986,35 @@ const AttendanceManagement = () => {
                                               borderRadius: 0.5,
                                               fontWeight: 'bold',
                                               fontSize: '0.75rem',
-                                              cursor: 'pointer',
+                                              cursor: dayData.status !== 'weekend' ? 'pointer' : 'default',
                                               transition: 'transform 0.2s',
                                               '&:hover': {
-                                                transform: 'scale(1.1)',
-                                                boxShadow: 2
+                                                transform: dayData.status !== 'weekend' ? 'scale(1.1)' : 'none',
+                                                boxShadow: dayData.status !== 'weekend' ? 2 : 0
                                               }
                                             }}
+                                            onClick={() => handleCalendarDayClick(employee, dayData)}
                                           >
                                             {dayData.day}
                                           </Box>
                                         </Tooltip>
                                       ))}
+                                                    {/* Manual Mark Attendance Dialog */}
+                                                    <Dialog open={manualMarkDialog} onClose={() => setManualMarkDialog(false)}>
+                                                      <DialogTitle>Manually Mark Attendance</DialogTitle>
+                                                      <DialogContent>
+                                                        <Typography>
+                                                          Mark <b>{manualMarkInfo.employee?.employeeName}</b> as <b>Present</b> for <b>{manualMarkInfo.date}</b> with 8 hours?
+                                                        </Typography>
+                                                        {manualMarkError && <Alert severity="error" sx={{ mt: 2 }}>{manualMarkError}</Alert>}
+                                                      </DialogContent>
+                                                      <DialogActions>
+                                                        <Button onClick={() => setManualMarkDialog(false)} disabled={manualMarkLoading}>Cancel</Button>
+                                                        <Button onClick={handleManualMarkConfirm} variant="contained" disabled={manualMarkLoading}>
+                                                          {manualMarkLoading ? <CircularProgress size={20} /> : 'Mark Present'}
+                                                        </Button>
+                                                      </DialogActions>
+                                                    </Dialog>
                                     </Box>
                                     
                                     {/* Legend */}
