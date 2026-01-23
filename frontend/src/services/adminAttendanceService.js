@@ -67,6 +67,22 @@ class AdminAttendanceService {
     const response = await axiosInstance.get('/admin/AdminAttendanceReport/range', { params });
     return response.data;
   }
+
+  /**
+   * Get complaint summary report for a date range (inclusive)
+   * @param {Object} filters - { fromDate, toDate, branch, department, employeeId }
+   * @returns {Promise<Array>} List of complaint summary records
+   */
+  async getComplaintSummaryRange(filters = {}) {
+    const params = {};
+    if (filters.fromDate) params.fromDate = filters.fromDate;
+    if (filters.toDate) params.toDate = filters.toDate;
+    if (filters.branch) params.branch = filters.branch;
+    if (filters.department) params.department = filters.department;
+    if (filters.employeeId) params.employeeId = filters.employeeId;
+    const response = await axiosInstance.get('/admin/AdminAttendanceReport/complaints-range', { params });
+    return response.data;
+  }
 }
 
 const adminAttendanceService = new AdminAttendanceService();

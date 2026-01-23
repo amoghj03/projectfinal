@@ -90,6 +90,45 @@ namespace BankAPI.Services.Admin
             }
             return result;
         }
+
+        /// <summary>
+        /// Get complaint summary report for a date range (inclusive)
+        /// </summary>
+        public async Task<List<AdminComplaintDto>> GetComplaintSummaryRangeReport(string fromDate, string toDate, string? branch, string? department, string? employeeId, long tenantId)
+        {
+            var from = DateTime.SpecifyKind(DateTime.Parse(fromDate), DateTimeKind.Utc);
+            var to = DateTime.SpecifyKind(DateTime.Parse(toDate).AddDays(1).AddTicks(-1), DateTimeKind.Utc); // inclusive end of day
+            var query = _context.Complaints
+                .Include(c => c.Employee)
+                .Include(c => c.Employee.Branch)
+                .Where(c => c.TenantId == tenantId && c.CreatedAt >= from && c.CreatedAt <= to);
+            if (!string.IsNullOrEmpty(branch) && branch != "All Branches")
+                query = query.Where(c => c.Employee.Branch != null && c.Employee.Branch.Name == branch);
+            if (!string.IsNullOrEmpty(department))
+                query = query.Where(c => c.Employee.Department == department);
+            if (!string.IsNullOrEmpty(employeeId))
+                query = query.Where(c => c.Employee.EmployeeId == employeeId);
+            var complaints = await query.OrderByDescending(c => c.CreatedAt).ToListAsync();
+            return complaints.Select(c => new AdminComplaintDto
+            {
+                Id = c.Id,
+                ComplaintId = c.ComplaintNumber,
+                EmployeeId = c.EmployeeId,
+                EmployeeName = c.Employee?.FullName ?? "Unknown",
+                Department = c.Employee?.Department ?? "N/A",
+                Branch = c.Employee?.Branch != null ? c.Employee.Branch.Name : "N/A",
+                Subject = c.Subject,
+                Description = c.Description,
+                Category = c.Category.ToLower(),
+                Priority = c.Priority.ToLower(),
+                Status = c.Status,
+                SubmittedDate = c.CreatedAt,
+                LastUpdate = c.UpdatedAt,
+                Resolution = c.ResolutionNotes,
+                ResolvedBy = c.Employee?.FullName ?? "Unknown",//should be changed later for review
+                ResolvedDate = c.ResolvedAt
+            }).ToList();
+        }
     }
 
     // AttendanceRangeRequest moved to DTOs/AttendanceRangeRequest.cs

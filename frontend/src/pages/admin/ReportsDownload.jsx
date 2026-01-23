@@ -58,48 +58,81 @@ const ReportsDownload = () => {
   const [department, setDepartment] = useState('All');
   const [format, setFormat] = useState('xlsx');
 
-  const reports = [
-    {
+  // Read access object from localStorage (expects a JSON string)
+  let access = {
+    attendance: false,
+    skillReports: false,
+    complaints: false,
+    techIssues: false
+  };
+  try {
+    const accessStr = localStorage.getItem('adminPermissions');
+    if (accessStr) {
+      const parsed = JSON.parse(accessStr);
+      access = {
+        attendance: !!parsed.attendance,
+        skillReports: !!parsed.skillReports,
+        complaints: !!parsed.complaints,
+        techIssues: !!parsed.techIssues
+      };
+    }
+  } catch (e) {
+    // fallback to all false if parsing fails
+  }
+
+  // Build reports array based on access
+  const reports = [];
+  if (access.attendance) {
+    reports.push({
       id: 'attendance',
       title: 'Employee Attendance Report',
       description: 'Comprehensive attendance data including work hours, self-ratings, and productivity metrics',
-      icon: <People />,
+      icon: <People />, 
       color: 'primary',
-      fields: ['Employee ID', 'Name', 'Department', 'Attendance Status', 'Work Hours', 'Self Rating', 'Productivity Score']
-    },
-    {
+      fields: ['Employee ID', 'Name', 'Attendance Status', 'Work Hours', 'Self Rating', 'Productivity Score']
+    });
+  }
+  if (access.skillReports) {
+    reports.push({
       id: 'skill_tests',
       title: 'Skill Test Performance Report',
       description: 'Employee skill assessment results, scores, and improvement tracking',
-      icon: <Assessment />,
+      icon: <Assessment />, 
       color: 'success',
       fields: ['Employee ID', 'Name', 'Skill Area', 'Test Score', 'Pass/Fail Status', 'Previous Score', 'Improvement']
-    },
-    {
+    });
+  }
+  if (access.complaints) {
+    reports.push({
       id: 'complaints',
       title: 'Complaints Summary Report',
       description: 'All employee complaints with status, resolution details, and timelines',
-      icon: <ReportProblem />,
+      icon: <ReportProblem />, 
       color: 'warning',
       fields: ['Complaint ID', 'Employee', 'Category', 'Priority', 'Status', 'Resolution', 'Timeline']
-    },
-    {
+    });
+  }
+  if (access.techIssues) {
+    reports.push({
       id: 'tech_issues',
       title: 'Technical Issues Report',
       description: 'Tech issues reported, employee resolutions, and admin approval status',
-      icon: <BugReport />,
+      icon: <BugReport />, 
       color: 'error',
       fields: ['Issue ID', 'Employee', 'Category', 'Impact Level', 'Status', 'Resolution', 'Approval Status']
-    },
-    {
+    });
+  }
+  // Add comprehensive report if at least one other report is visible
+  if (reports.length > 0) {
+    reports.push({
       id: 'comprehensive',
       title: 'Comprehensive Employee Report',
       description: 'Complete employee data including attendance, skills, complaints, and technical contributions',
-      icon: <CalendarMonth />,
+      icon: <CalendarMonth />, 
       color: 'info',
       fields: ['All employee metrics combined in one comprehensive report']
-    }
-  ];
+    });
+  }
 
   const departments = ['All', 'Customer Service', 'IT Support', 'Accounts', 'HR', 'Management'];
 
@@ -341,20 +374,165 @@ const ReportsDownload = () => {
       data = generateSkillTestData();
       filename = `Skill_Test_Report_${dateFrom}_to_${dateTo}`;
     } else if (selectedReport === 'complaints') {
-      data = generateComplaintsData();
-      filename = `Complaints_Report_${dateFrom}_to_${dateTo}`;
+      try {
+        const filters = {
+          fromDate: dateFrom,
+          toDate: dateTo,
+          branch: getEffectiveBranch(),
+          ...(department !== 'All' && { department }),
+        };
+        const res = await adminAttendanceService.getComplaintSummaryRange(filters);
+        if (res.success && Array.isArray(res.data)) {
+          data = res.data.map(item => ({
+            'Complaint ID': item.complaintId,
+            'Employee ID': item.employeeId,
+            'Employee Name': item.employeeName,
+            'Branch': item.branch,
+            'Category': item.category,
+            'Priority': item.priority,
+            'Status': item.status,
+            'Resolution': item.resolution,
+            'Timeline': item.submittedDate + (item.resolvedDate ? ` - ${item.resolvedDate}` : ''),
+          }));
+        } else {
+          data = [];
+        }
+        filename = `Complaints_Report_${dateFrom}_to_${dateTo}`;
+      } catch (err) {
+        data = [];
+      }
     } else if (selectedReport === 'tech_issues') {
       data = generateTechIssuesData();
       filename = `Tech_Issues_Report_${dateFrom}_to_${dateTo}`;
     } else if (selectedReport === 'comprehensive') {
-      // Combine all data
-      data = [
-        ...generateAttendanceData().map(item => ({ ...item, 'Report Type': 'Attendance' })),
-        ...generateSkillTestData().map(item => ({ ...item, 'Report Type': 'Skill Tests' })),
-        ...generateComplaintsData().map(item => ({ ...item, 'Report Type': 'Complaints' })),
-        ...generateTechIssuesData().map(item => ({ ...item, 'Report Type': 'Tech Issues' }))
-      ];
-      filename = `comprehensive_report_${dateFrom}_to_${dateTo}`;
+      // Gather all data asynchronously before generating the file
+      data = [];
+      let attendanceSection = [];
+      if (access.attendance) {
+        try {
+          setAttendanceLoading(true);
+          setAttendanceError(null);
+          const filters = {
+            fromDate: dateFrom,
+            toDate: dateTo,
+            branch: getEffectiveBranch(),
+            ...(department !== 'All' && { department }),
+          };
+          const res = await adminAttendanceService.getAttendanceRange(filters);
+          if (res.success && Array.isArray(res.data)) {
+            attendanceSection = res.data.map(item => ({
+              'Employee ID': item.employeeId,
+              'Employee Name': item.employeeName,
+              'Department': item.department,
+              'Branch': item.branch,
+              'Date': item.date,
+              'Attendance Status': item.status,
+              'Check-in Time': item.checkInTime,
+              'Work Hours': item.workHours,
+              'Self Rating': item.productivityRating,
+              'Work Summary': item.notes,
+              'Productivity Score': item.productivityRating,
+              'Report Type': 'Attendance'
+            }));
+          }
+        } catch (err) {
+          setAttendanceError(err?.response?.data?.message || 'Failed to fetch attendance data');
+        } finally {
+          setAttendanceLoading(false);
+        }
+      }
+      // Synchronously gather other data
+      let skillSection = [];
+      if (access.skillReports) {
+        skillSection = generateSkillTestData().map(item => ({ ...item, 'Report Type': 'Skill Tests' }));
+      }
+      let complaintsSection = [];
+      if (access.complaints) {
+        try {
+          const filters = {
+            fromDate: dateFrom,
+            toDate: dateTo,
+            branch: getEffectiveBranch(),
+            ...(department !== 'All' && { department }),
+          };
+          const res = await adminAttendanceService.getComplaintSummaryRange(filters);
+          if (res.success && Array.isArray(res.data)) {
+            complaintsSection = res.data.map(item => ({
+              'Complaint ID': item.complaintId,
+              'Employee ID': item.employeeId,
+              'Employee Name': item.employeeName,
+              'Branch': item.branch,
+              'Category': item.category,
+              'Priority': item.priority,
+              'Status': item.status,
+              'Resolution': item.resolution,
+              'Timeline': item.submittedDate + (item.resolvedDate ? ` - ${item.resolvedDate}` : ''),
+              'Report Type': 'Complaints',
+            }));
+          } else {
+            complaintsSection = [];
+          }
+        } catch (err) {
+          complaintsSection = [];
+        }
+      }
+      let techSection = [];
+      if (access.techIssues) {
+        techSection = generateTechIssuesData().map(item => ({ ...item, 'Report Type': 'Tech Issues' }));
+      }
+      // Prepare data for each sheet
+      const sheets = [];
+      if (attendanceSection.length > 0) sheets.push({ name: 'Attendance', data: attendanceSection });
+      if (skillSection.length > 0) sheets.push({ name: 'Skill Tests', data: skillSection });
+      if (complaintsSection.length > 0) sheets.push({ name: 'Complaints', data: complaintsSection });
+      if (techSection.length > 0) sheets.push({ name: 'Tech Issues', data: techSection });
+      filename = `Comprehensive_Report_${dateFrom}_to_${dateTo}`;
+
+      // Excel export: each section as a separate sheet
+      if (format === 'xlsx') {
+        const workbook = new ExcelJS.Workbook();
+        sheets.forEach(sheet => {
+          const worksheet = workbook.addWorksheet(sheet.name);
+          if (sheet.data.length > 0) {
+            // Remove 'Department' from header and rows
+            const allHeaders = Object.keys(sheet.data[0]);
+            const header = allHeaders.filter(h => h !== 'Department');
+            worksheet.addRow(header);
+            worksheet.getRow(1).eachCell((cell) => {
+              cell.font = { bold: true };
+              cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'D9EAF7' }
+              };
+              cell.alignment = { horizontal: 'center', vertical: 'middle' };
+              cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+              };
+            });
+            sheet.data.forEach(row => {
+              worksheet.addRow(header.map(h => row[h]));
+            });
+            worksheet.columns.forEach(col => {
+              let maxLength = 10;
+              col.eachCell({ includeEmpty: true }, cell => {
+                maxLength = Math.max(maxLength, (cell.value ? cell.value.toString().length : 0));
+              });
+              col.width = maxLength + 2;
+            });
+          }
+        });
+        workbook.xlsx.writeBuffer().then(buffer => {
+          const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+          saveAs(blob, `${filename}.xlsx`);
+        });
+        return;
+      }
+      // CSV fallback: merge all data
+      data = sheets.flatMap(s => s.data);
     } else {
       return;
     }
@@ -692,12 +870,12 @@ const ReportsDownload = () => {
                       secondary="Select appropriate date range for accurate data"
                     />
                   </ListItem>
-                  <ListItem>
+                  {/* <ListItem>
                     <ListItemText
                       primary="Department Filter"
                       secondary="Filter by specific department or select 'All'"
                     />
-                  </ListItem>
+                  </ListItem> */}
                 </List>
               </Grid>
             </Grid>
