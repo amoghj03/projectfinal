@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useEffect } from 'react';
+import adminAttendanceService from '../../services/adminAttendanceService';
 import {
   Box,
   Typography,
@@ -36,12 +38,23 @@ import { useBranch } from '../../contexts/BranchContext';
 import { AdminLayout } from './AdminDashboard';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import ExcelJS from 'exceljs';
 
 const ReportsDownload = () => {
   const { getEffectiveBranch, isSuperAdmin } = useBranch();
   const [selectedReport, setSelectedReport] = useState('');
-  const [dateFrom, setDateFrom] = useState('2024-11-01');
-  const [dateTo, setDateTo] = useState(new Date().toISOString().split('T')[0]);
+  // Set dateFrom to the start of the current month and dateTo to today
+  const today = new Date();
+  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  // Format as yyyy-mm-dd in local time
+  function formatDateLocal(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  const [dateFrom, setDateFrom] = useState(formatDateLocal(startOfMonth));
+  const [dateTo, setDateTo] = useState(formatDateLocal(today));
   const [department, setDepartment] = useState('All');
   const [format, setFormat] = useState('xlsx');
 
@@ -90,82 +103,12 @@ const ReportsDownload = () => {
 
   const departments = ['All', 'Customer Service', 'IT Support', 'Accounts', 'HR', 'Management'];
 
-  // Mock data generators
-  const generateAttendanceData = () => {
-    const allData = [
-      {
-        'Employee ID': 'EMP001',
-        'Employee Name': 'John Doe',
-        'Department': 'Customer Service',
-        'Branch': 'Main Branch',
-        'Date': '2024-11-22',
-        'Attendance Status': 'Present',
-        'Check-in Time': '09:15 AM',
-        'Work Hours': 8,
-        'Self Rating': 8,
-        'Work Summary': 'Processed loan applications, handled customer calls',
-        'Productivity Score': 85
-      },
-      {
-        'Employee ID': 'EMP002',
-        'Employee Name': 'Jane Smith',
-        'Department': 'IT Support',
-        'Branch': 'Tech Center',
-        'Date': '2024-11-22',
-        'Attendance Status': 'Present',
-        'Check-in Time': '09:05 AM',
-        'Work Hours': 8.5,
-        'Self Rating': 9,
-        'Work Summary': 'Fixed critical system issues, deployed updates',
-        'Productivity Score': 92
-      },
-      {
-        'Employee ID': 'EMP003',
-        'Employee Name': 'Mike Johnson',
-        'Department': 'Accounts',
-        'Branch': 'Downtown Branch',
-        'Date': '2024-11-22',
-        'Attendance Status': 'Present',
-        'Check-in Time': '09:00 AM',
-        'Work Hours': 8,
-        'Self Rating': 7,
-        'Work Summary': 'Processed account settlements, reviewed statements',
-        'Productivity Score': 78
-      },
-      {
-        'Employee ID': 'EMP004',
-        'Employee Name': 'Sarah Wilson',
-        'Department': 'HR',
-        'Branch': 'Main Branch',
-        'Date': '2024-11-22',
-        'Attendance Status': 'Present',
-        'Check-in Time': '09:10 AM',
-        'Work Hours': 8,
-        'Self Rating': 9,
-        'Work Summary': 'Conducted interviews, updated employee records',
-        'Productivity Score': 88
-      },
-      {
-        'Employee ID': 'EMP005',
-        'Employee Name': 'David Brown',
-        'Department': 'Customer Service',
-        'Branch': 'East Branch',
-        'Date': '2024-11-22',
-        'Attendance Status': 'Present',
-        'Check-in Time': '09:20 AM',
-        'Work Hours': 7.5,
-        'Self Rating': 8,
-        'Work Summary': 'Handled customer inquiries, processed transactions',
-        'Productivity Score': 82
-      }
-    ];
-    
-    const effectiveBranch = getEffectiveBranch();
-    if (isSuperAdmin || effectiveBranch === 'All Branches') {
-      return allData;
-    }
-    return allData.filter(record => record.Branch === effectiveBranch);
-  };
+  // Attendance data state
+  const [attendanceData, setAttendanceData] = useState([]);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [attendanceError, setAttendanceError] = useState(null);
+
+
 
   const generateSkillTestData = () => {
     const allData = [
@@ -349,7 +292,7 @@ const ReportsDownload = () => {
     return allData.filter(record => record.Branch === effectiveBranch);
   };
 
-  const handleDownloadReport = () => {
+  const handleDownloadReport = async () => {
     if (!selectedReport) {
       alert('Please select a report type');
       return;
@@ -358,35 +301,62 @@ const ReportsDownload = () => {
     let data = [];
     let filename = '';
 
-    switch (selectedReport) {
-      case 'attendance':
-        data = generateAttendanceData();
-        filename = `attendance_report_${dateFrom}_to_${dateTo}`;
-        break;
-      case 'skill_tests':
-        data = generateSkillTestData();
-        filename = `skill_test_report_${dateFrom}_to_${dateTo}`;
-        break;
-      case 'complaints':
-        data = generateComplaintsData();
-        filename = `complaints_report_${dateFrom}_to_${dateTo}`;
-        break;
-      case 'tech_issues':
-        data = generateTechIssuesData();
-        filename = `tech_issues_report_${dateFrom}_to_${dateTo}`;
-        break;
-      case 'comprehensive':
-        // Combine all data
-        data = [
-          ...generateAttendanceData().map(item => ({ ...item, 'Report Type': 'Attendance' })),
-          ...generateSkillTestData().map(item => ({ ...item, 'Report Type': 'Skill Tests' })),
-          ...generateComplaintsData().map(item => ({ ...item, 'Report Type': 'Complaints' })),
-          ...generateTechIssuesData().map(item => ({ ...item, 'Report Type': 'Tech Issues' }))
-        ];
-        filename = `comprehensive_report_${dateFrom}_to_${dateTo}`;
-        break;
-      default:
-        return;
+    if (selectedReport === 'attendance') {
+      try {
+        setAttendanceLoading(true);
+        setAttendanceError(null);
+        const filters = {
+          fromDate: dateFrom,
+          toDate: dateTo,
+          branch: getEffectiveBranch(),
+          ...(department !== 'All' && { department }),
+        };
+        const res = await adminAttendanceService.getAttendanceRange(filters);
+        if (res.success && Array.isArray(res.data)) {
+          data = res.data.map(item => ({
+            'Employee ID': item.employeeId,
+            'Employee Name': item.employeeName,
+            'Department': item.department,
+            'Branch': item.branch,
+            'Date': item.date,
+            'Attendance Status': item.status,
+            'Check-in Time': item.checkInTime,
+            'Work Hours': item.workHours,
+            'Self Rating': item.productivityRating,
+            'Work Summary': item.notes,
+            'Productivity Score': item.productivityRating
+          }));
+        } else {
+          data = [];
+        }
+        filename = `Attendance_Report_${dateFrom}_to_${dateTo}`;
+      } catch (err) {
+        setAttendanceError(err?.response?.data?.message || 'Failed to fetch attendance data');
+        data = [];
+        filename = `Attendance_Report_${dateFrom}_to_${dateTo}`;
+      } finally {
+        setAttendanceLoading(false);
+      }
+    } else if (selectedReport === 'skill_tests') {
+      data = generateSkillTestData();
+      filename = `Skill_Test_Report_${dateFrom}_to_${dateTo}`;
+    } else if (selectedReport === 'complaints') {
+      data = generateComplaintsData();
+      filename = `Complaints_Report_${dateFrom}_to_${dateTo}`;
+    } else if (selectedReport === 'tech_issues') {
+      data = generateTechIssuesData();
+      filename = `Tech_Issues_Report_${dateFrom}_to_${dateTo}`;
+    } else if (selectedReport === 'comprehensive') {
+      // Combine all data
+      data = [
+        ...generateAttendanceData().map(item => ({ ...item, 'Report Type': 'Attendance' })),
+        ...generateSkillTestData().map(item => ({ ...item, 'Report Type': 'Skill Tests' })),
+        ...generateComplaintsData().map(item => ({ ...item, 'Report Type': 'Complaints' })),
+        ...generateTechIssuesData().map(item => ({ ...item, 'Report Type': 'Tech Issues' }))
+      ];
+      filename = `comprehensive_report_${dateFrom}_to_${dateTo}`;
+    } else {
+      return;
     }
 
     // Filter by department if not "All"
@@ -395,13 +365,44 @@ const ReportsDownload = () => {
     }
 
     if (format === 'xlsx') {
-      const ws = XLSX.utils.json_to_sheet(data);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Report');
-      
-      const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      saveAs(blob, `${filename}.xlsx`);
+      // Use ExcelJS for styled Excel export
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Report');
+      if (data.length > 0) {
+        // Remove 'Department' from header and rows
+        const allHeaders = Object.keys(data[0]);
+        const header = allHeaders.filter(h => h !== 'Department');
+        worksheet.addRow(header);
+        worksheet.getRow(1).eachCell((cell) => {
+          cell.font = { bold: true };
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'D9EAF7' } // light blue
+          };
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+        });
+        data.forEach(row => {
+          worksheet.addRow(header.map(h => row[h]));
+        });
+        worksheet.columns.forEach(col => {
+          let maxLength = 10;
+          col.eachCell({ includeEmpty: true }, cell => {
+            maxLength = Math.max(maxLength, (cell.value ? cell.value.toString().length : 0));
+          });
+          col.width = maxLength + 2;
+        });
+      }
+      workbook.xlsx.writeBuffer().then(buffer => {
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, `${filename}.xlsx`);
+      });
     } else {
       // CSV format
       const ws = XLSX.utils.json_to_sheet(data);
@@ -545,7 +546,7 @@ const ReportsDownload = () => {
                       sx={{ mb: 2 }}
                     />
 
-                    <FormControl fullWidth sx={{ mb: 2 }}>
+                    {/* <FormControl fullWidth sx={{ mb: 2 }}>
                       <InputLabel>Department</InputLabel>
                       <Select
                         value={department}
@@ -558,7 +559,7 @@ const ReportsDownload = () => {
                           </MenuItem>
                         ))}
                       </Select>
-                    </FormControl>
+                    </FormControl> */}
 
                     <FormControl fullWidth sx={{ mb: 3 }}>
                       <InputLabel>File Format</InputLabel>

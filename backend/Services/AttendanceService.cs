@@ -199,7 +199,7 @@ namespace BankAPI.Services
                     TenantId = employee.TenantId,
                     EmployeeId = employee.Id,
                     Date = dateObj,
-                    Status = status,
+                    Status = "Present", // Force status to Present
                     WorkHours = workHours,
                     CheckInTime = checkInDateTime,
                     CheckOutTime = checkOutDateTime,
@@ -210,7 +210,7 @@ namespace BankAPI.Services
             }
             else
             {
-                attendance.Status = status;
+                attendance.Status = "Present"; // Force status to Present
                 attendance.WorkHours = workHours;
                 attendance.CheckInTime = checkInDateTime;
                 attendance.CheckOutTime = checkOutDateTime;

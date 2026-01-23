@@ -31,6 +31,7 @@ builder.Services.AddScoped<AdminTechIssueService>();
 builder.Services.AddScoped<AdminComplaintService>();
 builder.Services.AddScoped<AdminLeaveService>();
 builder.Services.AddScoped<AdminAttendanceService>();
+builder.Services.AddScoped<AdminAttendanceReportService>();
 builder.Services.AddScoped<AdminPayslipService>();
 builder.Services.AddScoped<AdminRoleService>();
 builder.Services.AddScoped<AdminTenantService>();

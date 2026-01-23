@@ -627,7 +627,7 @@ const EmployeeTracking = () => {
                             <TableCell>
                               <Chip
                                 label={record.status}
-                                color={record.status === 'Present' ? 'success' : 'warning'}
+                                color={record.status == 'Present' ? 'success' : 'warning'}
                                 size="small"
                               />
                             </TableCell>
