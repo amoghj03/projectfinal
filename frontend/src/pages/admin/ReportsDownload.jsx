@@ -22,6 +22,7 @@ import {
   Alert,
   Divider,
   Paper,
+  Snackbar,
 } from '@mui/material';
 import {
   FileDownload,
@@ -141,7 +142,12 @@ const ReportsDownload = () => {
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [attendanceError, setAttendanceError] = useState(null);
 
+  // Snackbar state for notifications (copied from TechIssuesManagement)
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'error' });
 
+  const showError = (msg) => {
+    setSnackbar({ open: true, message: msg, severity: 'error' });
+  } 
 
   const generateSkillTestData = () => {
     const allData = [
@@ -333,6 +339,7 @@ const ReportsDownload = () => {
 
     let data = [];
     let filename = '';
+    let comprehensiveError = false;
 
     if (selectedReport === 'attendance') {
       try {
@@ -359,14 +366,17 @@ const ReportsDownload = () => {
             'Work Summary': item.notes,
             'Productivity Score': item.productivityRating
           }));
+          filename = `Attendance_Report_${dateFrom}_to_${dateTo}`;
         } else {
-          data = [];
+          showError(res.message || 'Failed to fetch attendance data');
+          setAttendanceLoading(false);
+          return;
         }
-        filename = `Attendance_Report_${dateFrom}_to_${dateTo}`;
       } catch (err) {
         setAttendanceError(err?.response?.data?.message || 'Failed to fetch attendance data');
-        data = [];
-        filename = `Attendance_Report_${dateFrom}_to_${dateTo}`;
+        showError(err?.response?.data?.message || 'Failed to fetch attendance data');
+        setAttendanceLoading(false);
+        return;
       } finally {
         setAttendanceLoading(false);
       }
@@ -394,12 +404,14 @@ const ReportsDownload = () => {
             'Resolution': item.resolution,
             'Timeline': item.submittedDate + (item.resolvedDate ? ` - ${item.resolvedDate}` : ''),
           }));
+          filename = `Complaints_Report_${dateFrom}_to_${dateTo}`;
         } else {
-          data = [];
+          showError(res.message || 'Failed to fetch complaints data');
+          return;
         }
-        filename = `Complaints_Report_${dateFrom}_to_${dateTo}`;
       } catch (err) {
-        data = [];
+        showError(err?.response?.data?.message || 'Failed to fetch complaints data');
+        return;
       }
     } else if (selectedReport === 'tech_issues') {
       data = generateTechIssuesData();
@@ -408,6 +420,7 @@ const ReportsDownload = () => {
       // Gather all data asynchronously before generating the file
       data = [];
       let attendanceSection = [];
+      let attendanceFailed = false;
       if (access.attendance) {
         try {
           setAttendanceLoading(true);
@@ -434,9 +447,14 @@ const ReportsDownload = () => {
               'Productivity Score': item.productivityRating,
               'Report Type': 'Attendance'
             }));
+          } else {
+            showError(res.message || 'Failed to fetch attendance data');
+            attendanceFailed = true;
           }
         } catch (err) {
           setAttendanceError(err?.response?.data?.message || 'Failed to fetch attendance data');
+          showError(err?.response?.data?.message || 'Failed to fetch attendance data');
+          attendanceFailed = true;
         } finally {
           setAttendanceLoading(false);
         }
@@ -447,6 +465,7 @@ const ReportsDownload = () => {
         skillSection = generateSkillTestData().map(item => ({ ...item, 'Report Type': 'Skill Tests' }));
       }
       let complaintsSection = [];
+      let complaintsFailed = false;
       if (access.complaints) {
         try {
           const filters = {
@@ -470,15 +489,22 @@ const ReportsDownload = () => {
               'Report Type': 'Complaints',
             }));
           } else {
-            complaintsSection = [];
+            showError(res.message || 'Failed to fetch complaints data');
+            complaintsFailed = true;
           }
         } catch (err) {
-          complaintsSection = [];
+          showError(err?.response?.data?.message || 'Failed to fetch complaints data');
+          complaintsFailed = true;
         }
       }
       let techSection = [];
       if (access.techIssues) {
         techSection = generateTechIssuesData().map(item => ({ ...item, 'Report Type': 'Tech Issues' }));
+      }
+      // If any required API failed, do not proceed
+      if ((access.attendance && attendanceFailed) || (access.complaints && complaintsFailed)) {
+        showError('Failed to fetch all required data for comprehensive report. Please fix errors and try again.');
+        return;
       }
       // Prepare data for each sheet
       const sheets = [];
@@ -756,7 +782,7 @@ const ReportsDownload = () => {
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <PictureAsPdf />
                             CSV (.csv)
-                          </Box>
+                          </Box>FormControl
                         </MenuItem>
                       </Select>
                     </FormControl>
@@ -881,6 +907,21 @@ const ReportsDownload = () => {
             </Grid>
           </CardContent>
         </Card>
+
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center'}}
+        >
+          <Alert 
+            onClose={() => setSnackbar({ ...snackbar, open: false })} 
+            severity={snackbar.severity}
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Box>
     </AdminLayout>
   );
