@@ -129,7 +129,47 @@ namespace BankAPI.Services.Admin
                 ResolvedDate = c.ResolvedAt
             }).ToList();
         }
-    }
 
-    // AttendanceRangeRequest moved to DTOs/AttendanceRangeRequest.cs
+        /// <summary>
+        /// Get tech issues report for a date range (inclusive)
+        /// </summary>
+        public async Task<List<AdminTechIssueDto>> GetTechIssuesRangeReport(string fromDate, string toDate, string? branch, string? department, string? employeeId, long tenantId)
+        {
+            var from = DateTime.SpecifyKind(DateTime.Parse(fromDate), DateTimeKind.Utc);
+            var to = DateTime.SpecifyKind(DateTime.Parse(toDate).AddDays(1).AddTicks(-1), DateTimeKind.Utc); // inclusive end of day
+            var query = _context.TechIssues
+                .Include(t => t.Employee)
+                .Include(t => t.Employee.Branch)
+                .Where(t => t.TenantId == tenantId && t.CreatedAt >= from && t.CreatedAt <= to);
+            if (!string.IsNullOrEmpty(branch) && branch != "All Branches")
+                query = query.Where(t => t.Employee.Branch != null && t.Employee.Branch.Name == branch);
+            if (!string.IsNullOrEmpty(department))
+                query = query.Where(t => t.Employee.Department == department);
+            if (!string.IsNullOrEmpty(employeeId))
+                query = query.Where(t => t.Employee.EmployeeId == employeeId);
+            var techIssues = await query.OrderByDescending(t => t.CreatedAt).ToListAsync();
+            return techIssues.Select(t => new AdminTechIssueDto
+            {
+                Id = t.Id,
+                IssueId = t.IssueNumber,
+                EmployeeId = t.EmployeeId,
+                EmployeeName = t.Employee?.FullName ?? "Unknown",
+                Department = t.Employee?.Department ?? "N/A",
+                Branch = t.Employee?.Branch?.Name ?? "N/A",
+                Title = t.Title,
+                Description = t.Description,
+                Category = t.Category,
+                Impact = t.Priority,
+                Status = t.Status,
+                SubmittedDate = t.CreatedAt,
+                LastUpdate = t.UpdatedAt,
+                EmployeeResolution = t.ResolutionNotes,
+                // Approval info (if available)
+                ApprovedBy = t.ApprovedByEmployee?.FullName,
+                ApprovedDate = t.ApprovedAt,
+            }).ToList();
+        }
+
+        // AttendanceRangeRequest moved to DTOs/AttendanceRangeRequest.cs
+    }
 }

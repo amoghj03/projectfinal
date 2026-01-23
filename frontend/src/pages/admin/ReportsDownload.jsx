@@ -57,7 +57,7 @@ const ReportsDownload = () => {
   const [dateFrom, setDateFrom] = useState(formatDateLocal(startOfMonth));
   const [dateTo, setDateTo] = useState(formatDateLocal(today));
   const [department, setDepartment] = useState('All');
-  const [format, setFormat] = useState('xlsx');
+  // Always use XLSX format
 
   // Read access object from localStorage (expects a JSON string)
   let access = {
@@ -414,8 +414,41 @@ const ReportsDownload = () => {
         return;
       }
     } else if (selectedReport === 'tech_issues') {
-      data = generateTechIssuesData();
-      filename = `Tech_Issues_Report_${dateFrom}_to_${dateTo}`;
+      try {
+        const filters = {
+          fromDate: dateFrom,
+          toDate: dateTo,
+          branch: getEffectiveBranch(),
+          ...(department !== 'All' && { department }),
+        };
+        const res = await adminAttendanceService.getTechIssuesRange(filters);
+        if (res.success && Array.isArray(res.data)) {
+          data = res.data.map(item => ({
+            'Issue ID': item.issueId,
+            'Employee ID': item.employeeId,
+            'Employee Name': item.employeeName,
+            'Department': item.department,
+            'Branch': item.branch,
+            'Title': item.title,
+            'Description': item.description,
+            'Category': item.category,
+            'Impact': item.impact,
+            'Status': item.status,
+            'Submitted Date': item.submittedDate,
+            'Employee Resolution': item.employeeResolution,
+            'Approved By': item.approvedBy,
+            'Approved Date': item.approvedDate,
+            'Last Update': item.lastUpdate
+          }));
+          filename = `Tech_Issues_Report_${dateFrom}_to_${dateTo}`;
+        } else {
+          showError(res.message || 'Failed to fetch tech issues data');
+          return;
+        }
+      } catch (err) {
+        showError(err?.response?.data?.message || 'Failed to fetch tech issues data');
+        return;
+      }
     } else if (selectedReport === 'comprehensive') {
       // Gather all data asynchronously before generating the file
       data = [];
@@ -445,7 +478,7 @@ const ReportsDownload = () => {
               'Self Rating': item.productivityRating,
               'Work Summary': item.notes,
               'Productivity Score': item.productivityRating,
-              'Report Type': 'Attendance'
+              //'Report Type': 'Attendance'
             }));
           } else {
             showError(res.message || 'Failed to fetch attendance data');
@@ -486,7 +519,7 @@ const ReportsDownload = () => {
               'Status': item.status,
               'Resolution': item.resolution,
               'Timeline': item.submittedDate + (item.resolvedDate ? ` - ${item.resolvedDate}` : ''),
-              'Report Type': 'Complaints',
+              //'Report Type': 'Complaints',
             }));
           } else {
             showError(res.message || 'Failed to fetch complaints data');
@@ -515,50 +548,46 @@ const ReportsDownload = () => {
       filename = `Comprehensive_Report_${dateFrom}_to_${dateTo}`;
 
       // Excel export: each section as a separate sheet
-      if (format === 'xlsx') {
-        const workbook = new ExcelJS.Workbook();
-        sheets.forEach(sheet => {
-          const worksheet = workbook.addWorksheet(sheet.name);
-          if (sheet.data.length > 0) {
-            // Remove 'Department' from header and rows
-            const allHeaders = Object.keys(sheet.data[0]);
-            const header = allHeaders.filter(h => h !== 'Department');
-            worksheet.addRow(header);
-            worksheet.getRow(1).eachCell((cell) => {
-              cell.font = { bold: true };
-              cell.fill = {
-                type: 'pattern',
-                pattern: 'solid',
-                fgColor: { argb: 'D9EAF7' }
-              };
-              cell.alignment = { horizontal: 'center', vertical: 'middle' };
-              cell.border = {
-                top: { style: 'thin' },
-                left: { style: 'thin' },
-                bottom: { style: 'thin' },
-                right: { style: 'thin' }
-              };
+      const workbook = new ExcelJS.Workbook();
+      sheets.forEach(sheet => {
+        const worksheet = workbook.addWorksheet(sheet.name);
+        if (sheet.data.length > 0) {
+          // Remove 'Department' from header and rows
+          const allHeaders = Object.keys(sheet.data[0]);
+          const header = allHeaders.filter(h => h !== 'Department');
+          worksheet.addRow(header);
+          worksheet.getRow(1).eachCell((cell) => {
+            cell.font = { bold: true };
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'D9EAF7' }
+            };
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            cell.border = {
+              top: { style: 'thin' },
+              left: { style: 'thin' },
+              bottom: { style: 'thin' },
+              right: { style: 'thin' }
+            };
+          });
+          sheet.data.forEach(row => {
+            worksheet.addRow(header.map(h => row[h]));
+          });
+          worksheet.columns.forEach(col => {
+            let maxLength = 10;
+            col.eachCell({ includeEmpty: true }, cell => {
+              maxLength = Math.max(maxLength, (cell.value ? cell.value.toString().length : 0));
             });
-            sheet.data.forEach(row => {
-              worksheet.addRow(header.map(h => row[h]));
-            });
-            worksheet.columns.forEach(col => {
-              let maxLength = 10;
-              col.eachCell({ includeEmpty: true }, cell => {
-                maxLength = Math.max(maxLength, (cell.value ? cell.value.toString().length : 0));
-              });
-              col.width = maxLength + 2;
-            });
-          }
-        });
-        workbook.xlsx.writeBuffer().then(buffer => {
-          const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-          saveAs(blob, `${filename}.xlsx`);
-        });
-        return;
-      }
-      // CSV fallback: merge all data
-      data = sheets.flatMap(s => s.data);
+            col.width = maxLength + 2;
+          });
+        }
+      });
+      workbook.xlsx.writeBuffer().then(buffer => {
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, `${filename}.xlsx`);
+      });
+      return;
     } else {
       return;
     }
@@ -568,52 +597,44 @@ const ReportsDownload = () => {
       data = data.filter(item => item.Department === department);
     }
 
-    if (format === 'xlsx') {
-      // Use ExcelJS for styled Excel export
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet('Report');
-      if (data.length > 0) {
-        // Remove 'Department' from header and rows
-        const allHeaders = Object.keys(data[0]);
-        const header = allHeaders.filter(h => h !== 'Department');
-        worksheet.addRow(header);
-        worksheet.getRow(1).eachCell((cell) => {
-          cell.font = { bold: true };
-          cell.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'D9EAF7' } // light blue
-          };
-          cell.alignment = { horizontal: 'center', vertical: 'middle' };
-          cell.border = {
-            top: { style: 'thin' },
-            left: { style: 'thin' },
-            bottom: { style: 'thin' },
-            right: { style: 'thin' }
-          };
-        });
-        data.forEach(row => {
-          worksheet.addRow(header.map(h => row[h]));
-        });
-        worksheet.columns.forEach(col => {
-          let maxLength = 10;
-          col.eachCell({ includeEmpty: true }, cell => {
-            maxLength = Math.max(maxLength, (cell.value ? cell.value.toString().length : 0));
-          });
-          col.width = maxLength + 2;
-        });
-      }
-      workbook.xlsx.writeBuffer().then(buffer => {
-        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        saveAs(blob, `${filename}.xlsx`);
+    // Always export as XLSX
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Report');
+    if (data.length > 0) {
+      // Remove 'Department' from header and rows
+      const allHeaders = Object.keys(data[0]);
+      const header = allHeaders.filter(h => h !== 'Department');
+      worksheet.addRow(header);
+      worksheet.getRow(1).eachCell((cell) => {
+        cell.font = { bold: true };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'D9EAF7' } // light blue
+        };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
       });
-    } else {
-      // CSV format
-      const ws = XLSX.utils.json_to_sheet(data);
-      const csvOutput = XLSX.utils.sheet_to_csv(ws);
-      const blob = new Blob([csvOutput], { type: 'text/csv;charset=utf-8;' });
-      saveAs(blob, `${filename}.csv`);
+      data.forEach(row => {
+        worksheet.addRow(header.map(h => row[h]));
+      });
+      worksheet.columns.forEach(col => {
+        let maxLength = 10;
+        col.eachCell({ includeEmpty: true }, cell => {
+          maxLength = Math.max(maxLength, (cell.value ? cell.value.toString().length : 0));
+        });
+        col.width = maxLength + 2;
+      });
     }
+    workbook.xlsx.writeBuffer().then(buffer => {
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, `${filename}.xlsx`);
+    });
   };
 
   const getReportIcon = (reportId) => {
@@ -765,27 +786,22 @@ const ReportsDownload = () => {
                       </Select>
                     </FormControl> */}
 
-                    <FormControl fullWidth sx={{ mb: 3 }}>
-                      <InputLabel>File Format</InputLabel>
-                      <Select
-                        value={format}
-                        onChange={(e) => setFormat(e.target.value)}
-                        label="File Format"
-                      >
-                        <MenuItem value="xlsx">
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <TableChart />
-                            Excel (.xlsx)
-                          </Box>
-                        </MenuItem>
-                        <MenuItem value="csv">
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <PictureAsPdf />
-                            CSV (.csv)
-                          </Box>FormControl
-                        </MenuItem>
-                      </Select>
-                    </FormControl>
+                    {/* File format selection removed: always XLSX */}
+                                                  <FormControl fullWidth sx={{ mb: 3 }}>
+                                <InputLabel>File Format</InputLabel>
+                                <Select
+                                  value={"xlsx"}
+                                  label="File Format"
+                                  disabled
+                                >
+                                  <MenuItem value="xlsx" disabled>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <TableChart />
+                                      Excel (.xlsx)
+                                    </Box>
+                                  </MenuItem>
+                                </Select>
+                              </FormControl>
 
                     <Button
                       fullWidth
@@ -884,12 +900,12 @@ const ReportsDownload = () => {
                       secondary="Best for data analysis and pivot tables"
                     />
                   </ListItem>
-                  <ListItem>
+                  {/* <ListItem>
                     <ListItemText
                       primary="CSV Format"
                       secondary="Best for importing into other systems"
                     />
-                  </ListItem>
+                  </ListItem> */}
                   <ListItem>
                     <ListItemText
                       primary="Date Range"

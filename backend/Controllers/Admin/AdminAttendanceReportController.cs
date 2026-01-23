@@ -94,4 +94,38 @@ public class AdminAttendanceReportController : BaseApiController
             return StatusCode(500, new { success = false, message = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Get tech issues report for a date range (inclusive)
+    /// </summary>
+    /// <param name="fromDate">Start date (YYYY-MM-DD)</param>
+    /// <param name="toDate">End date (YYYY-MM-DD)</param>
+    /// <param name="branch">Branch filter (optional)</param>
+    /// <param name="department">Department filter (optional)</param>
+    /// <param name="employeeId">Employee ID filter (optional)</param>
+    [HttpGet("tech-issues-range")]
+    public async Task<IActionResult> GetTechIssuesRange(
+        [FromQuery] string fromDate,
+        [FromQuery] string toDate,
+        [FromQuery] string? branch = null,
+        [FromQuery] string? department = null,
+        [FromQuery] string? employeeId = null)
+    {
+        try
+        {
+            var employeeIdFromAuth = GetEmployeeIdFromAuth();
+            if (employeeIdFromAuth == 0)
+                return Unauthorized(new { message = "Invalid authentication token" });
+            var employee = await _context.Employees.FindAsync(employeeIdFromAuth);
+            if (employee == null)
+                return Unauthorized(new { message = "Employee not found" });
+
+            var data = await _reportService.GetTechIssuesRangeReport(fromDate, toDate, branch, department, employeeId, employee.TenantId);
+            return Ok(new { success = true, data, count = data.Count });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
+    }
 }

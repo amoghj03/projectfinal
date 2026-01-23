@@ -83,6 +83,22 @@ class AdminAttendanceService {
     const response = await axiosInstance.get('/admin/AdminAttendanceReport/complaints-range', { params });
     return response.data;
   }
+
+    /**
+   * Get tech issues report for a date range (inclusive)
+   * @param {Object} filters - { fromDate, toDate, branch, department, employeeId }
+   * @returns {Promise<Array>} List of tech issues records
+   */
+  async getTechIssuesRange(filters = {}) {
+    const params = {};
+    if (filters.fromDate) params.fromDate = filters.fromDate;
+    if (filters.toDate) params.toDate = filters.toDate;
+    if (filters.branch) params.branch = filters.branch;
+    if (filters.department) params.department = filters.department;
+    if (filters.employeeId) params.employeeId = filters.employeeId;
+    const response = await axiosInstance.get('/admin/AdminAttendanceReport/tech-issues-range', { params });
+    return response.data;
+  }
 }
 
 const adminAttendanceService = new AdminAttendanceService();
