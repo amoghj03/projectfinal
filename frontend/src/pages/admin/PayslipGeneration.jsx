@@ -23,6 +23,7 @@ import {
   InputAdornment,
   CircularProgress,
   Snackbar,
+  FormControlLabel,
 } from '@mui/material';
 import {
   Business,
@@ -41,6 +42,14 @@ import { useReactToPrint } from 'react-to-print';
 import payslipService from '../../services/payslipService';
 
 const PayslipGeneration = () => {
+    // State to control showing company name
+    const [showCompanyName, setShowCompanyName] = useState(false);
+    // Editable margin top for company name box
+    const [companyNameMarginTop, setCompanyNameMarginTop] = useState(15);
+    // Store previous margin value when toggling
+    const [prevMarginTop, setPrevMarginTop] = useState(15);
+    // Get tenantName from localStorage
+    const tenantName = typeof window !== 'undefined' ? localStorage.getItem('tenantName') || '' : '';
   const { getEffectiveBranch, isSuperAdmin } = useBranch();
   const payslipRef = useRef();
   const effectiveBranch = getEffectiveBranch();
@@ -75,10 +84,7 @@ const PayslipGeneration = () => {
     otherDeductions: 0,
     bankName: 'Secure Bank',
     accountNumber: '',
-    workingDays: 0,
-    presentDays: 0,
-    absentDays: 0,
-    paidLeaves: 0,
+    // Attendance fields removed
   });
 
   const fetchEmployees = async () => {
@@ -130,10 +136,7 @@ const PayslipGeneration = () => {
         incomeTax: 0,
         otherDeductions: 0,
         accountNumber: '',
-        workingDays: 0,
-        presentDays: 0,
-        absentDays: 0,
-        paidLeaves: 0,
+        // Attendance fields removed
       });
       setPayslipGenerated(true);
     }
@@ -167,8 +170,7 @@ const PayslipGeneration = () => {
         professionalTax: parseFloat(payslipData.professionalTax) || 0,
         incomeTax: parseFloat(payslipData.incomeTax) || 0,
         otherDeductions: parseFloat(payslipData.otherDeductions) || 0,
-        workingDays: parseInt(payslipData.workingDays) || 0,
-        presentDays: parseInt(payslipData.presentDays) || 0,
+        // Attendance fields removed from request
       };
 
       const response = await payslipService.generatePayslip(payslipRequest);
@@ -211,15 +213,44 @@ const PayslipGeneration = () => {
       : 'Payslip',
   });
 
+  // Helper to format payPeriod as 'MonthName YYYY'
+  const formatPayPeriod = (payPeriod) => {
+    if (!payPeriod) return '';
+    const [year, month] = payPeriod.split('-');
+    if (!year || !month) return payPeriod;
+    const date = new Date(year, parseInt(month, 10) - 1);
+    return `${date.toLocaleString('default', { month: 'long' })}, ${year}`;
+  };
+
   const PayslipDocument = () => (
-    <Box sx={{ p: 4, backgroundColor: 'white' }}>
-      {/* Company Header */}
-      <Box sx={{ textAlign: 'center', mb: 4, borderBottom: '2px solid #1976d2', pb: 2 }}>
-        <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
-          SECURE BANK
-        </Typography>
+    <>
+      {/* Print style for A4 page */}
+      <style>{`
+        @media print {
+          @page {
+            size: A4;
+            margin: 0;
+          }
+          body {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+        }
+      `}</style>
+      <Box sx={{ p: 5, backgroundColor: 'white' }}>
+      {/* Company Header (optional) */}
+      <Box sx={{ textAlign: 'center', mb: 2, mt: Math.round(companyNameMarginTop), borderBottom: '2px solid #1976d2', pb: 3 }}>
+        {showCompanyName && (
+          <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+            {tenantName || 'Company Name'}
+          </Typography>
+        )}
+      </Box>
+
+      {/* Pay Period and Pay Date */}
+      <Box sx={{ textAlign: 'center', mb: 2 }}>
         <Typography variant="body2" color="text.secondary">
-          Employee Payslip for the month of {payslipData.payPeriod}
+          Employee Payslip for the month of {formatPayPeriod(payslipData.payPeriod)}
         </Typography>
         <Typography variant="caption" color="text.secondary">
           Pay Date: {payslipData.payDate}
@@ -232,37 +263,17 @@ const PayslipGeneration = () => {
           <Typography variant="body2"><strong>Employee ID:</strong> {payslipData.employeeId}</Typography>
           <Typography variant="body2"><strong>Employee Name:</strong> {payslipData.employeeName}</Typography>
           <Typography variant="body2"><strong>Designation:</strong> {payslipData.designation}</Typography>
-          <Typography variant="body2"><strong>Department:</strong> {payslipData.department}</Typography>
+          {/* <Typography variant="body2"><strong>Department:</strong> {payslipData.department}</Typography> */}
+          <Typography variant="body2"><strong>Account Number:</strong> {payslipData.accountNumber}</Typography>
         </Grid>
         <Grid item xs={6}>
           <Typography variant="body2"><strong>Branch:</strong> {payslipData.branch}</Typography>
           <Typography variant="body2"><strong>Email:</strong> {payslipData.email}</Typography>
           <Typography variant="body2"><strong>Bank Name:</strong> {payslipData.bankName}</Typography>
-          <Typography variant="body2"><strong>Account Number:</strong> {payslipData.accountNumber}</Typography>
         </Grid>
       </Grid>
 
-      <Divider sx={{ my: 2 }} />
-
-      {/* Attendance Details */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h6" sx={{ mb: 1, color: '#1976d2' }}>Attendance Details</Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={3}>
-            <Typography variant="body2"><strong>Working Days:</strong> {payslipData.workingDays}</Typography>
-          </Grid>
-          <Grid item xs={3}>
-            <Typography variant="body2"><strong>Present Days:</strong> {payslipData.presentDays}</Typography>
-          </Grid>
-          <Grid item xs={3}>
-            <Typography variant="body2"><strong>Absent Days:</strong> {payslipData.absentDays}</Typography>
-          </Grid>
-          <Grid item xs={3}>
-            <Typography variant="body2"><strong>Paid Leaves:</strong> {payslipData.paidLeaves}</Typography>
-          </Grid>
-        </Grid>
-      </Box>
-
+      {/* Attendance Details and extra divider removed */}
       <Divider sx={{ my: 2 }} />
 
       {/* Earnings and Deductions */}
@@ -355,10 +366,11 @@ const PayslipGeneration = () => {
         </Typography>
         <br />
         <Typography variant="caption" color="text.secondary">
-          For any queries, please contact HR Department at hr@securebank.com
+          Powered by Bancify.in
         </Typography>
       </Box>
     </Box>
+    </>
   );
 
   return (
@@ -414,6 +426,53 @@ const PayslipGeneration = () => {
         {/* Editable Payslip Form */}
         {payslipGenerated && (
           <>
+            {/* Edit Payslip Styles section */}
+            <Card sx={{ mb: 3 }}>
+              <CardContent>
+                <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold', color: 'primary.main', letterSpacing: 0.5 }}>
+                  Edit Payslip Styles
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+                <Grid container spacing={2} alignItems="center">
+                  <Grid item xs={12} md={7}>
+                    <FormControlLabel
+                      control={
+                        <input
+                          type="checkbox"
+                          checked={showCompanyName}
+                          onChange={e => {
+                            const checked = e.target.checked;
+                            setShowCompanyName(checked);
+                            if (checked) {
+                              setPrevMarginTop(companyNameMarginTop);
+                              setCompanyNameMarginTop(5);
+                            } else {
+                              setCompanyNameMarginTop(prevMarginTop);
+                            }
+                          }}
+                          style={{ accentColor: '#1976d2', width: 20, height: 20 }}
+                        />
+                      }
+                      label={<Typography variant="body2">Show company name on payslip (from tenant)</Typography>}
+                      sx={{ ml: 1 }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={5}>
+                    <TextField
+                      label="Company Name Margin Top"
+                      type="number"
+                      value={companyNameMarginTop}
+                      onChange={e => setCompanyNameMarginTop(Number(e.target.value))}
+                      inputProps={{ min: 0 }}
+                      size="small"
+                      fullWidth
+                      helperText="Spacing units (default: 15)"
+                      disabled={showCompanyName}
+                    />
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
             <Alert severity="info" sx={{ mb: 3 }}>
               All fields below are editable. Please review and modify the values as needed before generating the PDF.
             </Alert>
@@ -439,7 +498,7 @@ const PayslipGeneration = () => {
                       value={payslipData.employeeId}
                       onChange={(e) => handleInputChange('employeeId', e.target.value)}
                       InputProps={{
-                        startAdornment: <Person sx={{ mr: 1, color: 'action.active' }} />,
+                        startAdornment: <Person sx={{ mr: 1, color: 'action.active' }} />, 
                       }}
                     />
                   </Grid>
@@ -462,19 +521,11 @@ const PayslipGeneration = () => {
                   <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth
-                      label="Department"
-                      value={payslipData.department}
-                      onChange={(e) => handleInputChange('department', e.target.value)}
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
                       label="Branch"
                       value={payslipData.branch}
                       onChange={(e) => handleInputChange('branch', e.target.value)}
                       InputProps={{
-                        startAdornment: <Business sx={{ mr: 1, color: 'action.active' }} />,
+                        startAdornment: <Business sx={{ mr: 1, color: 'action.active' }} />, 
                       }}
                     />
                   </Grid>
@@ -485,7 +536,7 @@ const PayslipGeneration = () => {
                       value={payslipData.email}
                       onChange={(e) => handleInputChange('email', e.target.value)}
                       InputProps={{
-                        startAdornment: <Email sx={{ mr: 1, color: 'action.active' }} />,
+                        startAdornment: <Email sx={{ mr: 1, color: 'action.active' }} />, 
                       }}
                     />
                   </Grid>
@@ -529,49 +580,7 @@ const PayslipGeneration = () => {
                     />
                   </Grid>
 
-                  {/* Attendance Details */}
-                  <Grid item xs={12}>
-                    <Divider sx={{ my: 2 }} />
-                    <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold', color: 'primary.main' }}>
-                      Attendance Details
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={6} md={3}>
-                    <TextField
-                      fullWidth
-                      label="Working Days"
-                      value={payslipData.workingDays}
-                      onChange={(e) => handleInputChange('workingDays', e.target.value)}
-                      type="number"
-                    />
-                  </Grid>
-                  <Grid item xs={6} md={3}>
-                    <TextField
-                      fullWidth
-                      label="Present Days"
-                      value={payslipData.presentDays}
-                      onChange={(e) => handleInputChange('presentDays', e.target.value)}
-                      type="number"
-                    />
-                  </Grid>
-                  <Grid item xs={6} md={3}>
-                    <TextField
-                      fullWidth
-                      label="Absent Days"
-                      value={payslipData.absentDays}
-                      onChange={(e) => handleInputChange('absentDays', e.target.value)}
-                      type="number"
-                    />
-                  </Grid>
-                  <Grid item xs={6} md={3}>
-                    <TextField
-                      fullWidth
-                      label="Paid Leaves"
-                      value={payslipData.paidLeaves}
-                      onChange={(e) => handleInputChange('paidLeaves', e.target.value)}
-                      type="number"
-                    />
-                  </Grid>
+                  {/* Attendance Details removed */}
 
                   {/* Earnings */}
                   <Grid item xs={12}>
