@@ -46,6 +46,11 @@ import {
   Business,
   Receipt,
   PersonOutline,
+  SettingsApplications,
+  Security,
+  EventNote,
+  HowToReg,
+  ReceiptLong,
 } from '@mui/icons-material';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useBranch } from '../../contexts/BranchContext';
@@ -84,11 +89,12 @@ const AdminLayout = ({ children }) => {
   const allMenuItems = [
     { text: 'Admin Dashboard', icon: <DashboardIcon />, path: '/admin/dashboard', permission: 'dashboard' },
     { text: 'Tenant Onboarding', icon: <Business />, path: '/admin/tenant-onboarding', permission: 'tenantOnboarding' },
+    { text: 'Tenant Settings', icon: <SettingsApplications />, path: '/admin/tenant-settings', permission: 'tenantSettings' },
     { text: 'Employee Management', icon: <People />, path: '/admin/employee-management', permission: 'employeeManagement' },
-    { text: 'Role Management', icon: <AdminPanelSettings />, path: '/admin/role-management', permission: 'roleManagement' },
-    { text: 'Leave Management', icon: <Assignment />, path: '/admin/leave-management', permission: 'leaveManagement' },
-    { text: 'Attendance Management', icon: <Assignment />, path: '/admin/attendance', permission: 'attendance' },
-    { text: 'Payslip Generation', icon: <Receipt />, path: '/admin/payslip', permission: 'payslip' },
+    { text: 'Role Management', icon: <Security />, path: '/admin/role-management', permission: 'roleManagement' },
+    { text: 'Leave Management', icon: <EventNote />, path: '/admin/leave-management', permission: 'leaveManagement' },
+    { text: 'Attendance Management', icon: <HowToReg />, path: '/admin/attendance', permission: 'attendance' },
+    { text: 'Payslip Generation', icon: <ReceiptLong />, path: '/admin/payslip', permission: 'payslip' },
     { text: 'Skill Test Reports', icon: <Assessment />, path: '/admin/skill-reports', permission: 'skillReports' },
     { text: 'Complaints Overview', icon: <ReportProblem />, path: '/admin/complaints', permission: 'complaints' },
     { text: 'Tech Issues & Approvals', icon: <BugReport />, path: '/admin/tech-issues', permission: 'techIssues' },
@@ -97,7 +103,7 @@ const AdminLayout = ({ children }) => {
 
   // Filter menu items based on permissions (if permissions are set)
   const menuItems = adminPermissions 
-    ? allMenuItems.filter(item => adminPermissions[item.permission] === true)
+    ? allMenuItems.filter(item => !item.permission || adminPermissions[item.permission] === true)
     : allMenuItems; // Show all if no permissions are set (backward compatibility)
 
   const handleDrawerToggle = () => {

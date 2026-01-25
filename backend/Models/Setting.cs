@@ -15,6 +15,7 @@ public class Setting
     [Column("tenant_id")]
     public long TenantId { get; set; }
 
+
     [Required]
     [Column("key")]
     [MaxLength(150)]
@@ -24,6 +25,7 @@ public class Setting
     [Column("value")]
     [MaxLength(255)]
     public string Value { get; set; } = string.Empty;
+
 
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

@@ -130,6 +130,7 @@ public class AuthService : IAuthService
                 adminPermissions["reports"] = allPermissions.Any(p => p.Name == "report.download");
                 adminPermissions["payslip"] = allPermissions.Any(p => p.Name.Contains("payslip") || p.Name == "payslip.generate");
                 adminPermissions["tenantOnboarding"] = allPermissions.Any(p => p.Name == "tenantOnboarding");
+                adminPermissions["tenantSettings"] = allPermissions.Any(p => p.Name == "tenant.settings");
             }
 
             // Build permissions dictionary for employee
