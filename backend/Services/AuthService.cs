@@ -58,11 +58,27 @@ public class AuthService : IAuthService
                 };
             }
 
+            // Decode base64 password from frontend
+            string decodedPassword;
+            try
+            {
+                var base64EncodedBytes = System.Convert.FromBase64String(request.Password);
+                decodedPassword = System.Text.Encoding.UTF8.GetString(base64EncodedBytes);
+            }
+            catch
+            {
+                return new LoginResponse
+                {
+                    Success = false,
+                    Message = "Invalid password encoding."
+                };
+            }
+
             // In production, use proper password hashing (BCrypt, etc.)
             // For now, we'll do a simple check (matching the init_db.sql pattern)
             // Note: In init_db.sql, passwords are stored as '$2a$11$hashed_password_here'
             // For demo purposes, we'll accept 'password123' for all users
-            if (user.PasswordHash != request.Password)
+            if (user.PasswordHash != decodedPassword)
             {
                 return new LoginResponse
                 {

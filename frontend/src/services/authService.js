@@ -31,10 +31,12 @@ class AuthService {
    * @returns {Promise<Object>} User data and token
    */
   async login(email, password) {
+    // Basic encryption: base64 encode the password
+    const encryptedPassword = btoa(password);
     try {
       const response = await axiosInstance.post('/auth/login', {
         email,
-        password,
+        password: encryptedPassword,
       });
 
       const data = response.data;
