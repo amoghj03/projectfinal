@@ -170,7 +170,7 @@ const EmployeeTracking = () => {
 
   const fetchAttendanceHistory = async () => {
     try {
-      const response = await attendanceService.getAttendanceHistory(7);
+      const response = await attendanceService.getAttendanceHistory(5);
       if (response.success && response.data && Array.isArray(response.data) && response.data.length > 0) {
         const history = response.data
           .map(record => {
@@ -627,7 +627,12 @@ const EmployeeTracking = () => {
                             <TableCell>
                               <Chip
                                 label={record.status}
-                                color={record.status == 'Present' ? 'success' : 'warning'}
+                                color={
+                                  record.status === 'Present' ? 'success' :
+                                  record.status === 'Late' ? 'warning' :
+                                  record.status === 'Absent' ? 'error' :
+                                  record.status === 'Leave' ? 'info' : 'default'
+                                }
                                 size="small"
                               />
                             </TableCell>

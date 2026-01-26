@@ -26,6 +26,8 @@ import {
 import { Edit, Save, Cancel } from '@mui/icons-material';
 import { AdminLayout } from './AdminDashboard';
 import adminSettingsService from '../../services/adminSettingsService';
+import { LocalizationProvider, TimePicker } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 
 const TenantSettings = () => {
   const [settings, setSettings] = useState([]);
@@ -55,12 +57,12 @@ const TenantSettings = () => {
     }
   };
 
-  const handleEdit = (row) => {
-    setEditRow(row.id);
-    setEditValue(row.value);
-    setOriginalValue(row.value);
-    // Description removed
-  };
+  // const handleEdit = (row) => {
+  //   setEditRow(row.id);
+  //   setEditValue(row.value);
+  //   setOriginalValue(row.value);
+  //   // Description removed
+  // };
 
   const handleCancel = () => {
     setEditRow(null);
@@ -69,23 +71,86 @@ const TenantSettings = () => {
     // Description removed
   };
 
-  const handleSave = async () => {
-    try {
-      await adminSettingsService.updateSetting(editRow, {
-        ...settings.find(s => s.id === editRow),
-        value: editValue,
-      });
-      setSnackbar({ open: true, message: 'Setting updated successfully', severity: 'success' });
-      setEditRow(null);
-      fetchSettings();
-    } catch (err) {
-      setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to update setting', severity: 'error' });
-    }
-  };
+  // const handleSave = async () => {
+  //   try {
+  //     await adminSettingsService.updateSetting(editRow, {
+  //       ...settings.find(s => s.id === editRow),
+  //       value: editValue,
+  //     });
+  //     setSnackbar({ open: true, message: 'Setting updated successfully', severity: 'success' });
+  //     setEditRow(null);
+  //     fetchSettings();
+  //   } catch (err) {
+  //     setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to update setting', severity: 'error' });
+  //   }
+  // };
 
   const handleCloseSnackbar = () => {
     setSnackbar({ ...snackbar, open: false });
   };
+
+  function parseTimeStringToDate(timeStr) {
+  if (!timeStr) return null;
+  timeStr = timeStr.replace(/\"/g, '');
+  const now = new Date();
+  let date = new Date(now);
+  const match = timeStr.match(/(\\d{1,2})(:(\\d{2}))?\\s*(AM|PM)/i);
+  if (match) {
+    let hours = parseInt(match[1], 10);
+    const minutes = match[3] ? parseInt(match[3], 10) : 0;
+    const ampm = match[4].toUpperCase();
+    if (ampm === 'PM' && hours < 12) hours += 12;
+    if (ampm === 'AM' && hours === 12) hours = 0;
+    date.setHours(hours, minutes, 0, 0);
+    return date;
+  }
+  const parsed = Date.parse('01/01/2000 ' + timeStr);
+  if (!isNaN(parsed)) return new Date(parsed);
+  return now;
+}
+
+function formatDateToTimeString(date) {
+  if (!(date instanceof Date)) return date;
+  let hours = date.getHours();
+  const minutes = date.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  return minutes
+    ? `${hours}:${minutes.toString().padStart(2, '0')} ${ampm}`
+    : `${hours} ${ampm}`;
+}
+
+const handleEdit = (row) => {
+  setEditRow(row.id);
+  if (row.key === 'checkIn' || row.key === 'checkOut') {
+    const date = parseTimeStringToDate(row.value);
+    setEditValue(date);
+    setOriginalValue(date);
+  } else {
+    setEditValue(row.value);
+    setOriginalValue(row.value);
+  }
+};
+
+const handleSave = async () => {
+  try {
+    let valueToSave = editValue;
+    const row = settings.find(s => s.id === editRow);
+    if (row.key === 'checkIn' || row.key === 'checkOut') {
+      valueToSave = formatDateToTimeString(editValue);
+    }
+    await adminSettingsService.updateSetting(editRow, {
+      ...row,
+      value: valueToSave,
+    });
+    setSnackbar({ open: true, message: 'Setting updated successfully', severity: 'success' });
+    setEditRow(null);
+    fetchSettings();
+  } catch (err) {
+    setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to update setting', severity: 'error' });
+  }
+};
 
   return (
     <AdminLayout>
@@ -142,12 +207,22 @@ const TenantSettings = () => {
                           <TableCell>{row.key}</TableCell>
                           <TableCell>
                             {editRow === row.id ? (
-                              <TextField
-                                value={editValue}
-                                onChange={e => setEditValue(e.target.value)}
-                                size="small"
-                                fullWidth
-                              />
+                              (row.key === 'checkIn' || row.key === 'checkOut') ? (
+                                <LocalizationProvider dateAdapter={AdapterDateFns}>
+                                  <TimePicker
+                                    value={editValue}
+                                    onChange={val => setEditValue(val)}
+                                    renderInput={(params) => <TextField {...params} size="small" fullWidth />}
+                                  />
+                                </LocalizationProvider>
+                              ) : (
+                                <TextField
+                                  value={editValue}
+                                  onChange={e => setEditValue(e.target.value)}
+                                  size="small"
+                                  fullWidth
+                                />
+                              )
                             ) : (
                               row.value
                             )}

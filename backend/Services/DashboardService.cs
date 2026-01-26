@@ -128,7 +128,7 @@ namespace BankAPI.Services
                 .Select(lr => new RecentActivityDto
                 {
                     Type = "Leave",
-                    Title = $"{lr.LeaveType} Request",
+                    Title = $"Leave - {lr.Status}",
                     Description = $"{lr.StartDate:MMM dd} - {lr.EndDate:MMM dd}",
                     Status = lr.Status,
                     Date = lr.CreatedAt

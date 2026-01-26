@@ -26,6 +26,7 @@
     "@mui/x-data-grid": "^5.17.24",
     "@mui/x-date-pickers": "^5.0.20",
     "axios": "^1.13.2",
+    "date-fns": "^2.30.0",
     "dayjs": "^1.11.7",
     "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",

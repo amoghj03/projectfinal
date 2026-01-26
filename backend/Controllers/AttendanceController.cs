@@ -109,7 +109,7 @@ public class AttendanceController : BaseApiController
     }
 
     [HttpGet("history")]
-    public async Task<IActionResult> GetAttendanceHistory([FromQuery] int days = 30)
+    public async Task<IActionResult> GetAttendanceHistory([FromQuery] int days = 5)
     {
         try
         {

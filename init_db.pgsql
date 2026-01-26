@@ -1027,6 +1027,8 @@ COPY public.settings (id, tenant_id, key, value, created_at, updated_at) FROM st
 4	1	TechIssueApproval	true	2025-12-31 12:09:49.91933	2025-12-31 12:09:49.91933
 3	1	RequireComplaintApproval	false	2025-12-31 12:09:49.91933	2025-12-31 12:09:49.91933
 5	1	No weekends	true	2026-01-11 07:35:17.547536	2026-01-11 07:35:17.547536
+15	1	"checkOut"	5 PM	"2026-01-25 17:38:16.347578"	"2026-01-25 17:38:16.347578"
+14	1	"checkIn"	9 AM	"2026-01-25 17:37:52.301727"	"2026-01-25 17:37:52.301727"
 \.
 
 

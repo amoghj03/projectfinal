@@ -100,7 +100,7 @@ const attendanceService = {
   },
 
   // Get attendance history
-  getAttendanceHistory: async (days = 30) => {
+  getAttendanceHistory: async (days = 5) => {
     try {
       const response = await attendanceApi.get('/Attendance/history', {
         params: { days },
