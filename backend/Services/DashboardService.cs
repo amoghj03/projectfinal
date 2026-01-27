@@ -42,15 +42,44 @@ namespace BankAPI.Services
                            a.Date.Year == currentYear)
                 .ToListAsync();
 
-            var presentDays = currentAttendance.Count(a => a.Status == "Present");
+            var presentDays = currentAttendance.Count(a => a.Status == "Present" || a.Status == "Late");
             var absentDays = currentAttendance.Count(a => a.Status == "Absent");
 
+            // Get the tenant_id for the employee
+            var employee = await _context.Employees
+                .Where(e => e.Id == employeeId)
+                .Select(e => new { e.TenantId })
+                .FirstOrDefaultAsync();
 
-            // Calculate total working days from 1st of month up to today (excluding weekends)
+            long? tenantId = employee?.TenantId;
+
+            // Get the 'No weekends' setting for the tenant from the settings table
+            var noWeekendsSetting = await _context.Settings
+                .Where(s => s.Key == "No weekends" && s.TenantId == tenantId)
+                .OrderByDescending(s => s.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            bool noWeekends = false;
+            if (noWeekendsSetting != null &&
+                (noWeekendsSetting.Value?.ToLower() == "true" || noWeekendsSetting.Value == "1"))
+            {
+                noWeekends = true;
+            }
+
             int today = now.Day;
-            int totalWorkingDays = Enumerable.Range(1, today)
-                .Select(day => new DateTime(currentYear, currentMonth, day))
-                .Count(date => date.DayOfWeek != DayOfWeek.Saturday && date.DayOfWeek != DayOfWeek.Sunday);
+            int totalWorkingDays;
+            if (noWeekends)
+            {
+                // Consider all days from 1st to today (including weekends)
+                totalWorkingDays = today;
+            }
+            else
+            {
+                // Exclude weekends
+                totalWorkingDays = Enumerable.Range(1, today)
+                    .Select(day => new DateTime(currentYear, currentMonth, day))
+                    .Count(date => date.DayOfWeek != DayOfWeek.Saturday && date.DayOfWeek != DayOfWeek.Sunday);
+            }
 
             var attendanceRate = totalWorkingDays > 0
                 ? Math.Round((decimal)presentDays / totalWorkingDays * 100, 1)
