@@ -43,6 +43,8 @@ class BranchService {
   async getBranchesByTenant(tenantId) {
     try {
       const response = await axiosInstance.get(`/branch/tenant/${tenantId}`);
+      // Store branches in localStorage for further use
+      localStorage.setItem('TenantBranches', JSON.stringify(response.data));
       return response.data;
     } catch (error) {
       console.error('Error fetching branches:', error);

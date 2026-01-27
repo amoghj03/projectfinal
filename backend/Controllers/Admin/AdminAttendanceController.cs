@@ -159,4 +159,126 @@ public class AdminAttendanceController : BaseApiController
             });
         }
     }
+
+    /// <summary>
+    /// Declare a holiday (admin)
+    /// </summary>
+    [HttpPost("declare-holiday")]
+    public async Task<IActionResult> DeclareHoliday([FromBody] DeclareHolidayDto dto)
+    {
+        if (dto == null || string.IsNullOrWhiteSpace(dto.Name) || dto.TenantId <= 0 || dto.Date == default)
+            return BadRequest("Invalid data");
+
+        try
+        {
+            var result = await _adminAttendanceService.DeclareHolidayAsync(dto);
+            if (result.Success)
+                return Ok(new { success = true });
+            else
+                return Conflict(new { success = false, message = result.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
+    }
+    /// <summary>
+    /// Get holiday calendar for a specific month and optional branch
+    /// </summary>
+    [HttpGet("holidays/calendar")]
+    public async Task<IActionResult> GetHolidayCalendar([FromQuery] int year, [FromQuery] int month, [FromQuery] int? branchId = null)
+    {
+        try
+        {
+            var employeeIdFromAuth = GetEmployeeIdFromAuth();
+            if (employeeIdFromAuth == 0)
+                return Unauthorized(new { message = "Invalid authentication token" });
+
+            var employee = await _context.Employees.FindAsync(employeeIdFromAuth);
+            if (employee == null)
+                return Unauthorized(new { message = "Employee not found" });
+
+            var data = await _adminAttendanceService.GetHolidaysByBranchNameAsync(year, month, (int)employee.TenantId, branchId);
+            return Ok(new { success = true, data });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Create a new holiday
+    /// </summary>
+    [HttpPost("holidays")]
+    public async Task<IActionResult> CreateHoliday([FromBody] CreateHolidayDto holidayDto)
+    {
+        try
+        {
+            var employeeIdFromAuth = GetEmployeeIdFromAuth();
+            if (employeeIdFromAuth == 0)
+                return Unauthorized(new { message = "Invalid authentication token" });
+
+            var employee = await _context.Employees.FindAsync(employeeIdFromAuth);
+            if (employee == null)
+                return Unauthorized(new { message = "Employee not found" });
+
+            var createdHoliday = await _adminAttendanceService.CreateHolidayAsync(holidayDto, (int)employee.TenantId, (int)employeeIdFromAuth);
+            return Ok(new { success = true, data = createdHoliday });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Delete a holiday
+    /// </summary>
+    [HttpDelete("holidays/{holidayId}")]
+    public async Task<IActionResult> DeleteHoliday(int holidayId)
+    {
+        try
+        {
+            var employeeIdFromAuth = GetEmployeeIdFromAuth();
+            if (employeeIdFromAuth == 0)
+                return Unauthorized(new { message = "Invalid authentication token" });
+
+            var employee = await _context.Employees.FindAsync(employeeIdFromAuth);
+            if (employee == null)
+                return Unauthorized(new { message = "Employee not found" });
+
+            var result = await _adminAttendanceService.DeleteHolidayAsync(holidayId, (int)employee.TenantId);
+            return Ok(new { success = result });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get holidays for a date range
+    /// </summary>
+    [HttpGet("holidays/daterange")]
+    public async Task<IActionResult> GetHolidaysForDateRange([FromQuery] DateTime startDate, [FromQuery] DateTime endDate, [FromQuery] int? branchId = null)
+    {
+        try
+        {
+            var employeeIdFromAuth = GetEmployeeIdFromAuth();
+            if (employeeIdFromAuth == 0)
+                return Unauthorized(new { message = "Invalid authentication token" });
+
+            var employee = await _context.Employees.FindAsync(employeeIdFromAuth);
+            if (employee == null)
+                return Unauthorized(new { message = "Employee not found" });
+
+            var data = await _adminAttendanceService.GetHolidaysForDateRangeAsync(startDate, endDate, (int)employee.TenantId, branchId);
+            return Ok(new { success = true, data });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
+    }
 }

@@ -52,6 +52,8 @@ import { AdminLayout } from './AdminDashboard';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import attendanceService from '../../services/attendanceService';
+import adminAttendanceService from '../../services/adminAttendanceService';
+import branchService from '../../services/branchService';
 
 const TabPanel = ({ children, value, index }) => (
   <div role="tabpanel" hidden={value !== index}>
@@ -147,6 +149,14 @@ const AttendanceManagement = () => {
   const [employeeCalendarData, setEmployeeCalendarData] = useState({});
   const [includeWeekends, setIncludeWeekends] = useState(false);
 
+  // Holiday Declaration state
+  const [holidayData, setHolidayData] = useState([]);
+  const [holidayCalendarData, setHolidayCalendarData] = useState([]);
+  const [holidayMarkDialog, setHolidayMarkDialog] = useState(false);
+  const [holidayMarkInfo, setHolidayMarkInfo] = useState({ date: null, name: '', description: '' });
+  const [holidayMarkLoading, setHolidayMarkLoading] = useState(false);
+  const [holidayMarkError, setHolidayMarkError] = useState(null);
+
   const hasFetchedRef = useRef(false);
   const previousDailyBranchRef = useRef(null);
   const previousMonthlyBranchRef = useRef(null);
@@ -173,6 +183,13 @@ const AttendanceManagement = () => {
       setEmployeeCalendarData({}); // Clear calendar cache when month/branch changes
       setExpandedRow(null); // Close expanded rows
       fetchMonthlyAttendance();
+    }
+  }, [currentBranch, filterMonth, tabValue]);
+
+  // Fetch holidays when tab 2 is selected and month/branch changes
+  useEffect(() => {
+    if (tabValue === 2) {
+      fetchHolidays();
     }
   }, [currentBranch, filterMonth, tabValue]);
 
@@ -232,6 +249,116 @@ const AttendanceManagement = () => {
       setError(err.response?.data?.message || 'Failed to load monthly attendance data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchHolidays = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [year, month] = filterMonth.split('-').map(Number);
+      let branchId = null;
+      if (currentBranch && currentBranch !== 'All Branches') {
+        // Map branch name to branchId using TenantBranches from localStorage
+        const branches = JSON.parse(localStorage.getItem('TenantBranches') || '[]');
+        const branchObj = branches.find(b => b.name === currentBranch);
+        branchId = branchObj ? branchObj.id : null;
+      }
+      const response = await adminAttendanceService.getHolidayCalendar(year, month, branchId);
+      
+      if (response.success) {
+        setHolidayData(response.data?.holidays || []);
+        generateHolidayCalendar(response.data?.holidays || [], year, month);
+      } else {
+        setError('Failed to load holiday data');
+      }
+    } catch (err) {
+      console.error('Error fetching holidays:', err);
+      setError(err.response?.data?.message || 'Failed to load holiday data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateHolidayCalendar = (holidays, year, month) => {
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const holidayMap = {};
+    
+    holidays.forEach(holiday => {
+      const date = new Date(holiday.date);
+      if (date.getFullYear() === year && date.getMonth() + 1 === month) {
+        holidayMap[date.getDate()] = holiday;
+      }
+    });
+
+    const calendarData = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month - 1, day);
+      const dayOfWeek = date.getDay();
+      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      
+      // Only mark as weekend if weekends are not included in the configuration
+      const isWeekend = !includeWeekends && (dayOfWeek === 0 || dayOfWeek === 6);
+      
+      calendarData.push({
+        day,
+        date: dateStr,
+        dayOfWeek,
+        holiday: holidayMap[day] || null,
+        isWeekend
+      });
+    }
+
+    setHolidayCalendarData(calendarData);
+  };
+
+  const handleHolidayDayClick = (dayData) => {
+    if (dayData.holiday) {
+      // Show holiday details or delete option
+      return;
+    }
+    
+    // Mark as holiday
+    setHolidayMarkInfo({
+      date: dayData.date,
+      name: '',
+      description: ''
+    });
+    setHolidayMarkError(null);
+    setHolidayMarkDialog(true);
+  };
+
+  const handleHolidayMarkConfirm = async () => {
+    if (!holidayMarkInfo.name.trim()) {
+      setHolidayMarkError('Holiday name is required');
+      return;
+    }
+
+    setHolidayMarkLoading(true);
+    setHolidayMarkError(null);
+    
+    try {
+      let branchId = null;
+       if (currentBranch && currentBranch !== 'All Branches') {
+        // Map branch name to branchId using TenantBranches from localStorage
+        const branches = JSON.parse(localStorage.getItem('TenantBranches') || '[]');
+        const branchObj = branches.find(b => b.name === currentBranch);
+        branchId = branchObj ? branchObj.id : null;
+      }
+      await adminAttendanceService.createHoliday({
+        date: new Date(holidayMarkInfo.date).toISOString(),
+        name: holidayMarkInfo.name.trim(),
+        description: holidayMarkInfo.description.trim() || null,
+        branchId
+      });
+      
+      setHolidayMarkDialog(false);
+      await fetchHolidays(); // Refresh holiday data
+    } catch (err) {
+      setHolidayMarkError(err?.response?.data?.message || 'Failed to create holiday');
+    } finally {
+      setHolidayMarkLoading(false);
     }
   };
 
@@ -476,6 +603,7 @@ const AttendanceManagement = () => {
     setPage(0); // Reset pagination
     setExpandedRow(null); // Close any expanded rows
     setEmployeeCalendarData({}); // Clear calendar cache when switching tabs
+    setHolidayCalendarData([]); // Clear holiday calendar cache when switching tabs
     // useEffect will handle fetching when tab changes
   };
 
@@ -562,6 +690,7 @@ const AttendanceManagement = () => {
             <Tabs value={tabValue} onChange={handleTabChange}>
               <Tab label="Daily Attendance Tracker" />
               <Tab label="Monthly Attendance Tracker" />
+              <Tab label="Holiday Declaration" />
             </Tabs>
           </Box>
         </Card>
@@ -1089,6 +1218,284 @@ const AttendanceManagement = () => {
             </CardContent>
           </Card>
         </TabPanel>
+
+        <TabPanel value={tabValue} index={2}>
+          {/* Holiday Declaration Tab */}
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Avatar sx={{ backgroundColor: 'info.main', mr: 2 }}>
+                      <CalendarMonth />
+                    </Avatar>
+                    <Box>
+                      <Typography variant="h6">{holidayData.length}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Holidays This Month
+                      </Typography>
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={3}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Avatar sx={{ backgroundColor: 'warning.main', mr: 2 }}>
+                      <Business />
+                    </Avatar>
+                    <Box>
+                      <Typography variant="h6">{currentBranch}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Current Branch
+                      </Typography>
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+
+          {/* Holiday Filters */}
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Grid container spacing={3} alignItems="center">
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    label="Month"
+                    type="month"
+                    value={filterMonth}
+                    onChange={(e) => setFilterMonth(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+
+          {/* Holiday Calendar */}
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <CalendarMonth /> Holiday Declaration Calendar - {filterMonth}
+              </Typography>
+              
+              {holidayCalendarData.length === 0 ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                  <CircularProgress size={24} />
+                </Box>
+              ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <Box sx={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(7, 1fr)', 
+                    gap: 0.5,
+                    mt: 2,
+                    maxWidth: 600,
+                    width: '100%'
+                  }}>
+                    {/* Day headers */}
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                      <Box
+                        key={day}
+                        sx={{
+                          textAlign: 'center',
+                          fontWeight: 'bold',
+                          fontSize: '0.875rem',
+                          color: 'text.secondary',
+                          pb: 1,
+                          height: 40,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        {day}
+                      </Box>
+                    ))}
+                    
+                    {/* Empty cells for first week alignment */}
+                    {Array.from({ length: holidayCalendarData[0]?.dayOfWeek || 0 }).map((_, idx) => (
+                      <Box key={`empty-${idx}`} sx={{ height: 60 }} />
+                    ))}
+                    
+                    {/* Calendar days */}
+                    {holidayCalendarData.map((dayData) => (
+                      <Tooltip
+                        key={dayData.day}
+                        title={
+                          dayData.holiday 
+                            ? `${dayData.date}: ${dayData.holiday.name}` 
+                            : dayData.isWeekend 
+                              ? `${dayData.date}: Weekend` 
+                              : `${dayData.date}: Click to mark as holiday`
+                        }
+                        arrow
+                      >
+                        <Box
+                          sx={{
+                            width: '100%',
+                            height: 60,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: dayData.holiday 
+                              ? '#f44336' 
+                              : dayData.isWeekend 
+                                ? '#e0e0e0' 
+                                : '#fff',
+                            color: dayData.holiday || dayData.isWeekend ? '#fff' : '#333',
+                            borderRadius: 1,
+                            border: '1px solid #ddd',
+                            cursor: !dayData.holiday ? 'pointer' : 'default',
+                            transition: 'transform 0.2s, boxShadow 0.2s',
+                            '&:hover': {
+                              transform: !dayData.holiday ? 'scale(1.05)' : 'none',
+                              boxShadow: !dayData.holiday ? 2 : 0
+                            }
+                          }}
+                          onClick={() => !dayData.isWeekend && handleHolidayDayClick(dayData)}
+                        >
+                          <Typography variant="h6" sx={{ fontSize: '1rem', fontWeight: 'bold' }}>
+                            {dayData.day}
+                          </Typography>
+                          {dayData.holiday && (
+                            <Typography variant="caption" sx={{ fontSize: '0.7rem', textAlign: 'center', maxWidth: '100%' }}>
+                              {dayData.holiday.name.length > 8 
+                                ? `${dayData.holiday.name.substring(0, 8)}...` 
+                                : dayData.holiday.name}
+                            </Typography>
+                          )}
+                        </Box>
+                      </Tooltip>
+                    ))}
+                  </Box>
+                  
+                  {/* Legend */}
+                  <Box sx={{ display: 'flex', gap: 3, mt: 3, justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Box sx={{ width: 20, height: 20, backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: 0.5 }} />
+                      <Typography variant="body2">Working Day</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Box sx={{ width: 20, height: 20, backgroundColor: '#f44336', borderRadius: 0.5 }} />
+                      <Typography variant="body2">Holiday</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Box sx={{ width: 20, height: 20, backgroundColor: '#e0e0e0', borderRadius: 0.5 }} />
+                      <Typography variant="body2">Weekend</Typography>
+                    </Box>
+                  </Box>
+
+                  {/* Holiday List */}
+                  {holidayData.length > 0 && (
+                    <Box sx={{ mt: 4, width: '100%', maxWidth: 600 }}>
+                      <Typography variant="h6" gutterBottom>
+                        Holidays This Month
+                      </Typography>
+                      <Grid container spacing={2}>
+                        {holidayData.map((holiday) => (
+                          <Grid item xs={12} sm={6} key={holiday.holidayId}>
+                            <Card variant="outlined" sx={{ p: 2 }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                                <Box>
+                                  <Typography variant="subtitle1" fontWeight="bold">
+                                    {holiday.name}
+                                  </Typography>
+                                  <Typography variant="body2" color="text.secondary">
+                                    {new Date(holiday.date).toLocaleDateString()}
+                                  </Typography>
+                                  {holiday.description && (
+                                    <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>
+                                      {holiday.description}
+                                    </Typography>
+                                  )}
+                                  {holiday.branchName && (
+                                    <Chip 
+                                      label={holiday.branchName} 
+                                      size="small" 
+                                      variant="outlined" 
+                                      sx={{ mt: 0.5 }} 
+                                    />
+                                  )}
+                                </Box>
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={async () => {
+                                    try {
+                                      await adminAttendanceService.deleteHoliday(holiday.holidayId);
+                                      await fetchHolidays();
+                                    } catch (err) {
+                                      setError('Failed to delete holiday');
+                                    }
+                                  }}
+                                >
+                                  <Tooltip title="Delete Holiday">
+                                    <span>×</span>
+                                  </Tooltip>
+                                </IconButton>
+                              </Box>
+                            </Card>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
+                  )}
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </TabPanel>
+
+        {/* Holiday Mark Dialog */}
+        <Dialog open={holidayMarkDialog} onClose={() => setHolidayMarkDialog(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>Mark Holiday</DialogTitle>
+          <DialogContent>
+            <Typography gutterBottom>
+              Mark <b>{holidayMarkInfo.date}</b> as a holiday
+            </Typography>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="Holiday Name"
+              fullWidth
+              variant="outlined"
+              value={holidayMarkInfo.name}
+              onChange={(e) => setHolidayMarkInfo({ ...holidayMarkInfo, name: e.target.value })}
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              margin="dense"
+              label="Description (Optional)"
+              fullWidth
+              multiline
+              rows={2}
+              variant="outlined"
+              value={holidayMarkInfo.description}
+              onChange={(e) => setHolidayMarkInfo({ ...holidayMarkInfo, description: e.target.value })}
+            />
+            {holidayMarkError && <Alert severity="error" sx={{ mt: 2 }}>{holidayMarkError}</Alert>}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setHolidayMarkDialog(false)} disabled={holidayMarkLoading}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleHolidayMarkConfirm} 
+              variant="contained" 
+              disabled={holidayMarkLoading}
+              sx={{ background: 'linear-gradient(135deg, #f44336, #d32f2f)' }}
+            >
+              {holidayMarkLoading ? <CircularProgress size={20} /> : 'Mark Holiday'}
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         {/* Employee Details Dialog */}
         <Dialog open={detailsDialog} onClose={() => setDetailsDialog(false)} maxWidth="md" fullWidth>

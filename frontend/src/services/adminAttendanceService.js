@@ -99,7 +99,89 @@ class AdminAttendanceService {
     const response = await axiosInstance.get('/admin/AdminAttendanceReport/tech-issues-range', { params });
     return response.data;
   }
-}
+  // HOLIDAY MANAGEMENT METHODS
+
+  /**
+   * Get holidays for a specific month and optional branch
+   * @param {number} year - Year
+   * @param {number} month - Month
+   * @param {number|null} branchId - Branch ID (optional)
+   * @returns {Promise<Object>} Holiday calendar data
+   */
+  async getHolidayCalendar(year, month, branchId = null) {
+    try {
+      const params = {
+        year,
+        month
+      };
+      
+      if (branchId && branchId !== 'All Branches') {
+        params.branchId = branchId;
+      }
+
+      const response = await axiosInstance.get('/admin/AdminAttendance/holidays/calendar', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching holiday calendar:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a new holiday
+   * @param {Object} holidayData - Holiday data {date, name, description, branchId}
+   * @returns {Promise<Object>} Created holiday
+   */
+  async createHoliday(holidayData) {
+    try {
+      const response = await axiosInstance.post('/admin/AdminAttendance/holidays', holidayData);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating holiday:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a holiday
+   * @param {number} holidayId - Holiday ID
+   * @returns {Promise<Object>} Success response
+   */
+  async deleteHoliday(holidayId) {
+    try {
+      const response = await axiosInstance.delete(`/admin/AdminAttendance/holidays/${holidayId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting holiday:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get holidays for a date range
+   * @param {Date} startDate - Start date
+   * @param {Date} endDate - End date
+   * @param {number|null} branchId - Branch ID (optional)
+   * @returns {Promise<Array>} List of holidays
+   */
+  async getHolidaysForDateRange(startDate, endDate, branchId = null) {
+    try {
+      const params = {
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0]
+      };
+      
+      if (branchId && branchId !== 'All Branches') {
+        params.branchId = branchId;
+      }
+
+      const response = await axiosInstance.get('/admin/AdminAttendance/holidays/daterange', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching holidays for date range:', error);
+      throw error;
+    }
+  }}
 
 const adminAttendanceService = new AdminAttendanceService();
 export default adminAttendanceService;

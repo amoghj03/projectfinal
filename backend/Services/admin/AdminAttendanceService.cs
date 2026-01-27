@@ -2,6 +2,7 @@ using BankAPI.Data;
 using BankAPI.Models;
 using BankAPI.Models.DTOs;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace BankAPI.Services.Admin
 {
@@ -317,6 +318,239 @@ namespace BankAPI.Services.Admin
                 },
                 Attendances = attendances
             };
+        }
+
+        public async Task<(bool Success, string? Message)> DeclareHolidayAsync(DeclareHolidayDto dto)
+        {
+            // Improved duplicate check:
+            bool exists;
+            if (dto.BranchId == null)
+            {
+                // Declaring for all branches: block if any holiday exists for this tenant/date (any branch)
+                exists = await _context.Holidays.AnyAsync(h => h.TenantId == dto.TenantId && h.Date == dto.Date.Date);
+                if (exists)
+                    return (false, "Holiday already declared for this date (all branches or a specific branch).");
+            }
+            else
+            {
+                // Declaring for a specific branch: block if a holiday exists for this tenant/date for this branch or for all branches
+                exists = await _context.Holidays.AnyAsync(h => h.TenantId == dto.TenantId && h.Date == dto.Date.Date && (h.BranchId == null || h.BranchId == dto.BranchId));
+                if (exists)
+                    return (false, "Holiday already declared for this date (all branches or this branch).");
+            }
+
+
+            var holiday = new BankAPI.Models.Holiday
+            {
+                TenantId = dto.TenantId,
+                BranchId = dto.BranchId,
+                Date = dto.Date.Date,
+                Name = dto.Name,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _context.Holidays.Add(holiday);
+            await _context.SaveChangesAsync();
+            return (true, null);
+        }
+
+        /// <summary>
+        /// Get holidays for a tenant and (optionally) a branch
+        /// </summary>
+        public async Task<List<HolidayDto>> GetHolidaysAsync(long tenantId, long? branchId = null, string? month = null)
+        {
+            var query = _context.Holidays.AsQueryable();
+            query = query.Where(h => h.TenantId == tenantId);
+            if (branchId.HasValue)
+            {
+                // Get holidays for this branch or for all branches (branchId == null)
+                query = query.Where(h => h.BranchId == null || h.BranchId == branchId);
+            }
+            if (!string.IsNullOrEmpty(month))
+            {
+                // month format: "YYYY-MM"
+                if (DateTime.TryParseExact(month + "-01", "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, out var firstDay))
+                {
+                    firstDay = DateTime.SpecifyKind(firstDay, DateTimeKind.Utc);
+                    var lastDay = firstDay.AddMonths(1).AddDays(-1);
+                    lastDay = DateTime.SpecifyKind(lastDay, DateTimeKind.Utc);
+                    query = query.Where(h => h.Date >= firstDay && h.Date <= lastDay);
+                }
+            }
+            var holidays = await query.ToListAsync();
+            return holidays.Select(h => new HolidayDto
+            {
+                HolidayId = (int)h.Id,
+                TenantId = (int)h.TenantId,
+                BranchId = (int?)h.BranchId,
+                Date = h.Date,
+                Name = h.Name,
+                CreatedAt = h.CreatedAt
+            }).ToList();
+        }
+
+        /// <summary>
+        /// Get holidays for a specific month and optional branch
+        /// </summary>
+        public async Task<HolidayCalendarDto> GetHolidaysByBranchNameAsync(int year, int month, int tenantId, int? branchId = null)
+        {
+            // // Ensure dates are UTC
+            var startDate = DateTime.SpecifyKind(new DateTime(year, month, 1), DateTimeKind.Utc);
+            var endDate = DateTime.SpecifyKind(startDate.Date.AddMonths(1), DateTimeKind.Utc);
+            // var startDate = new DateTime(year, month, 1);
+            // var startDate = new DateTime(year, month, 1);
+            // var endDate = startDate.AddMonths(1);
+
+            var query = _context.Holidays
+                .Include(h => h.Branch)
+                .Include(h => h.CreatedByEmployee)
+                .Where(h => h.TenantId == tenantId &&
+                           h.Date >= startDate &&
+                           h.Date < endDate);
+
+            // Apply branch filter
+            if (branchId.HasValue)
+            {
+                query = query.Where(h => h.BranchId == branchId || h.BranchId == null);
+            }
+            else
+            {
+                query = query.Where(h => h.BranchId == null);
+            }
+
+            var holidays = await query.OrderBy(h => h.Date).ToListAsync();
+
+            var result = new HolidayCalendarDto
+            {
+                Year = year,
+                Month = month,
+                MonthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month),
+                Holidays = holidays.Select(h => new HolidayDto
+                {
+                    HolidayId = (int)h.Id,
+                    Date = h.Date,
+                    Name = h.Name,
+                    Description = h.Description,
+                    BranchId = (int?)h.BranchId,
+                    BranchName = h.Branch?.Name,
+                    TenantId = (int)h.TenantId,
+                    CreatedBy = (int?)h.CreatedBy,
+                    CreatedByName = h.CreatedByEmployee?.FullName,
+                    CreatedAt = h.CreatedAt
+                }).ToList()
+            };
+
+            return result;
+        }
+
+        /// <summary>
+        /// Create a new holiday
+        /// </summary>
+        public async Task<HolidayDto> CreateHolidayAsync(CreateHolidayDto createHolidayDto, int tenantId, int createdBy)
+        {
+            // Ensure date is UTC
+            var utcDate = DateTime.SpecifyKind(createHolidayDto.Date.Date, DateTimeKind.Utc);
+
+            // Check if holiday already exists for this date, branch, and tenant
+            var existingHoliday = await _context.Holidays
+                .FirstOrDefaultAsync(h => h.Date.Date == utcDate &&
+                                        h.BranchId == createHolidayDto.BranchId &&
+                                        h.TenantId == tenantId);
+
+            if (existingHoliday != null)
+            {
+                throw new InvalidOperationException("A holiday already exists for this date and branch.");
+            }
+
+            var holiday = new Holiday
+            {
+                Date = utcDate,
+                Name = createHolidayDto.Name,
+                Description = createHolidayDto.Description,
+                BranchId = createHolidayDto.BranchId,
+                TenantId = tenantId,
+                CreatedBy = createdBy,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _context.Holidays.Add(holiday);
+            await _context.SaveChangesAsync();
+
+            // Fetch the created holiday with related data
+            var createdHoliday = await _context.Holidays
+                .Include(h => h.Branch)
+                .Include(h => h.CreatedByEmployee)
+                .FirstAsync(h => h.Id == holiday.Id);
+
+            return new HolidayDto
+            {
+                HolidayId = (int)createdHoliday.Id,
+                Date = createdHoliday.Date,
+                Name = createdHoliday.Name,
+                Description = createdHoliday.Description,
+                BranchId = (int?)createdHoliday.BranchId,
+                BranchName = createdHoliday.Branch?.Name,
+                TenantId = (int)createdHoliday.TenantId,
+                CreatedBy = (int?)createdHoliday.CreatedBy,
+                CreatedByName = createdHoliday.CreatedByEmployee?.FullName,
+                CreatedAt = createdHoliday.CreatedAt
+            };
+        }
+
+        /// <summary>
+        /// Delete a holiday
+        /// </summary>
+        public async Task<bool> DeleteHolidayAsync(int holidayId, int tenantId)
+        {
+            var holiday = await _context.Holidays
+                .FirstOrDefaultAsync(h => h.Id == holidayId && h.TenantId == tenantId);
+
+            if (holiday == null)
+                return false;
+
+            _context.Holidays.Remove(holiday);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        /// <summary>
+        /// Get holidays for a date range
+        /// </summary>
+        public async Task<List<HolidayDto>> GetHolidaysForDateRangeAsync(DateTime startDate, DateTime endDate, int tenantId, int? branchId = null)
+        {
+            // Ensure dates are UTC
+            var utcStartDate = DateTime.SpecifyKind(startDate.Date, DateTimeKind.Utc);
+            var utcEndDate = DateTime.SpecifyKind(endDate.Date, DateTimeKind.Utc);
+
+            var query = _context.Holidays
+                .Include(h => h.Branch)
+                .Include(h => h.CreatedByEmployee)
+                .Where(h => h.TenantId == tenantId &&
+                           h.Date >= utcStartDate &&
+                           h.Date <= utcEndDate);
+
+            if (branchId.HasValue)
+            {
+                query = query.Where(h => h.BranchId == branchId || h.BranchId == null);
+            }
+
+            var holidays = await query.OrderBy(h => h.Date).ToListAsync();
+
+            return holidays.Select(h => new HolidayDto
+            {
+                HolidayId = (int)h.Id,
+                Date = h.Date,
+                Name = h.Name,
+                Description = h.Description,
+                BranchId = (int?)h.BranchId,
+                BranchName = h.Branch?.Name,
+                TenantId = (int)h.TenantId,
+                CreatedBy = (int?)h.CreatedBy,
+                CreatedByName = h.CreatedByEmployee?.FullName,
+                CreatedAt = h.CreatedAt
+            }).ToList();
         }
     }
 }
