@@ -134,7 +134,7 @@ const AttendanceManagement = () => {
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
   const [filterMonth, setFilterMonth] = useState(new Date().toISOString().slice(0, 7));
   const [filterEmployee, setFilterEmployee] = useState('');
-  const [filterDepartment, setFilterDepartment] = useState('');
+  // Removed filterDepartment state as department dropdown is removed
   const [detailsDialog, setDetailsDialog] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [page, setPage] = useState(0);
@@ -363,11 +363,7 @@ const AttendanceManagement = () => {
   };
 
   // Extract unique departments from data
-  const departments = ['All', ...new Set(
-    (tabValue === 0 ? dailyAttendanceData : monthlyAttendanceData)
-      .map(emp => emp.department)
-      .filter(Boolean)
-  )];
+  // Removed departments array as department dropdown is removed
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
@@ -387,18 +383,14 @@ const AttendanceManagement = () => {
     const matchesEmployee = !filterEmployee || 
       emp.employeeName?.toLowerCase().includes(filterEmployee.toLowerCase()) || 
       emp.employeeId?.toLowerCase().includes(filterEmployee.toLowerCase());
-    const matchesDepartment = !filterDepartment || filterDepartment === 'All' || emp.department === filterDepartment;
-    
-    return matchesEmployee && matchesDepartment;
+    return matchesEmployee;
   });
 
   const filteredMonthlyData = monthlyAttendanceData.filter(emp => {
     const matchesEmployee = !filterEmployee || 
       emp.employeeName?.toLowerCase().includes(filterEmployee.toLowerCase()) || 
       emp.employeeId?.toLowerCase().includes(filterEmployee.toLowerCase());
-    const matchesDepartment = !filterDepartment || filterDepartment === 'All' || emp.department === filterDepartment;
-    
-    return matchesEmployee && matchesDepartment;
+    return matchesEmployee;
   });
 
   const handleViewDetails = (employee) => {
@@ -406,52 +398,7 @@ const AttendanceManagement = () => {
     setDetailsDialog(true);
   };
 
-  const handleExportExcel = () => {
-    if (tabValue === 0) {
-      // Export daily data
-      const exportData = filteredDailyData.map(emp => ({
-        'Employee ID': emp.employeeId,
-        'Employee Name': emp.employeeName,
-        'Department': emp.department,
-        'Branch': emp.branch || 'N/A',
-        'Status': getStatusLabel(emp.status),
-        'Check In': emp.checkInTime || 'N/A',
-        'Check Out': emp.checkOutTime || 'N/A',
-        'Work Hours': emp.workHours ? `${emp.workHours}h` : 'N/A',
-        'Date': emp.date
-      }));
-
-      const ws = XLSX.utils.json_to_sheet(exportData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Daily Attendance');
-      
-      const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-      const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      saveAs(data, `daily_attendance_${filterDate}.xlsx`);
-    } else {
-      // Export monthly data
-      const exportData = filteredMonthlyData.map(emp => ({
-        'Employee ID': emp.employeeId,
-        'Employee Name': emp.employeeName,
-        'Department': emp.department,
-        'Branch': emp.branch || 'N/A',
-        'Total Days': emp.totalDays,
-        'Present Days': emp.presentDays,
-        'Late Days': emp.lateDays,
-        'Absent Days': emp.absentDays,
-        'Attendance %': emp.attendancePercentage + '%',
-        'Avg Hours': emp.avgHours + 'h'
-      }));
-
-      const ws = XLSX.utils.json_to_sheet(exportData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Monthly Attendance');
-      
-      const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-      const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      saveAs(data, `monthly_attendance_${filterMonth}.xlsx`);
-    }
-  };
+  // Removed handleExportExcel function as Download Excel button is removed
 
   // Calculate daily statistics
   const dailyStats = {
@@ -641,25 +588,7 @@ const AttendanceManagement = () => {
               )}
             </Box>
           </Box>
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button
-              variant="outlined"
-              startIcon={<Refresh />}
-              onClick={handleRefresh}
-              disabled={loading}
-            >
-              Refresh
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<FileDownload />}
-              onClick={handleExportExcel}
-              sx={{ background: 'linear-gradient(135deg, #64B5F6, #42A5F5)' }}
-              disabled={loading || (tabValue === 0 ? filteredDailyData.length === 0 : filteredMonthlyData.length === 0)}
-            >
-              Download Excel
-            </Button>
-          </Box>
+          {/* Removed Refresh and Download Excel buttons as requested */}
         </Box>
 
         {/* Error Alert */}
@@ -773,20 +702,7 @@ const AttendanceManagement = () => {
                 size="small"
                 sx={{ minWidth: 200 }}
               />
-              <FormControl size="small" sx={{ minWidth: 150 }}>
-                <InputLabel>Department</InputLabel>
-                <Select
-                  value={filterDepartment}
-                  onChange={(e) => setFilterDepartment(e.target.value)}
-                  label="Department"
-                >
-                  {departments.map((dept) => (
-                    <MenuItem key={dept} value={dept}>
-                      {dept}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              {/* Department dropdown removed as requested */}
             </Box>
           </CardContent>
         </Card>
@@ -978,22 +894,7 @@ const AttendanceManagement = () => {
                     size="small"
                   />
                 </Grid>
-                <Grid item xs={12} md={3}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Department</InputLabel>
-                    <Select
-                      value={filterDepartment}
-                      onChange={(e) => setFilterDepartment(e.target.value)}
-                      label="Department"
-                    >
-                      {departments.map((dept) => (
-                        <MenuItem key={dept} value={dept}>
-                          {dept}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
+                {/* Department dropdown removed as requested */}
               </Grid>
             </CardContent>
           </Card>

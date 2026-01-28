@@ -319,6 +319,17 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const { getEffectiveBranch, isSuperAdmin } = useBranch();
 
+  // Get admin permissions from localStorage (define here for this component)
+  const getAdminPermissions = () => {
+    try {
+      const permissions = localStorage.getItem('adminPermissions');
+      return permissions ? JSON.parse(permissions) : null;
+    } catch {
+      return null;
+    }
+  };
+  const adminPermissions = getAdminPermissions();
+
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -400,6 +411,7 @@ const AdminDashboard = () => {
       color: '#E3F2FD',
       path: '/admin/attendance',
       count: `${stats?.presentToday ?? 0}/${stats?.totalEmployees ?? 0}`,
+      permission: 'attendance',
     },
     {
       title: 'Skill Test Reports',
@@ -408,6 +420,7 @@ const AdminDashboard = () => {
       color: '#E8F5E8',
       path: '/admin/skill-reports',
       count: `${stats?.monthlyTestAvg ?? 0}% avg`,
+      permission: 'skillReports',
     },
     {
       title: 'Complaints Overview',
@@ -416,6 +429,7 @@ const AdminDashboard = () => {
       color: '#FFF3E0',
       path: '/admin/complaints',
       count: `${stats?.openComplaints ?? 0} open`,
+      permission: 'complaints',
     },
     {
       title: 'Tech Issues & Approvals',
@@ -424,8 +438,15 @@ const AdminDashboard = () => {
       color: '#FCE4EC',
       path: '/admin/tech-issues',
       count: `${stats?.techIssuesPending ?? 0} pending`,
+      permission: 'techIssues',
     },
-  ];
+  ].filter(card => {
+    // If permissions are set, filter by permission, else show all (backward compatibility)
+    if (adminPermissions) {
+      return !card.permission || adminPermissions[card.permission];
+    }
+    return true;
+  });
 
   const analyticsCards = [
     {
