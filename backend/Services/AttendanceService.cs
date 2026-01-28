@@ -18,6 +18,14 @@ namespace BankAPI.Services
         {
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
+            // Get employee and tenantId
+            var employee = await _context.Employees.FindAsync(employeeId);
+            var tenantId = employee?.TenantId ?? 0;
+
+            // Check if today is a holiday for the tenant
+            var todayDateTimeUtc = DateTime.SpecifyKind(today.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            bool isHoliday = await _context.Holidays.AnyAsync(h => h.TenantId == tenantId && h.Date == todayDateTimeUtc);
+
             var attendance = await _context.Attendances
                 .Where(a => a.EmployeeId == employeeId && a.Date == today)
                 .FirstOrDefaultAsync();
@@ -27,7 +35,8 @@ namespace BankAPI.Services
                 return new TodayAttendanceDto
                 {
                     CheckedIn = false,
-                    CheckedOut = false
+                    CheckedOut = false,
+                    IsHoliday = isHoliday
                 };
             }
 
@@ -39,13 +48,26 @@ namespace BankAPI.Services
                 CheckOutTime = attendance.CheckOutTime?.ToString("hh:mm tt"),
                 Status = attendance.Status,
                 WorkHours = attendance.WorkHours,
-                ProductivityRating = attendance.ProductivityRating
+                ProductivityRating = attendance.ProductivityRating,
+                IsHoliday = isHoliday
             };
         }
 
         public async Task<AttendanceDto> CheckIn(long employeeId, CheckInRequest request)
         {
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+            // Get employee and tenantId
+            var employee = await _context.Employees.FindAsync(employeeId);
+            var tenantId = employee?.TenantId ?? 0;
+
+            // Check if today is a holiday for the tenant
+            var todayDateTimeUtc = DateTime.SpecifyKind(today.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            bool isHoliday = await _context.Holidays.AnyAsync(h => h.TenantId == tenantId && h.Date == todayDateTimeUtc);
+            if (isHoliday)
+            {
+                throw new InvalidOperationException("Check-in is not allowed on a holiday.");
+            }
 
             // Check if already checked in today
             var existingAttendance = await _context.Attendances
@@ -60,16 +82,28 @@ namespace BankAPI.Services
             var now = DateTime.UtcNow;
             var checkInTime = now;
 
+            // Get check-in setting for tenant (default 9:00 AM if not set)
+            var checkInSetting = await _context.Settings.FirstOrDefaultAsync(s => s.TenantId == tenantId && s.Key == "checkIn");
+            TimeSpan standardCheckIn = new TimeSpan(9, 0, 0);
+            if (checkInSetting != null && TimeSpan.TryParse(checkInSetting.Value, out var parsedTime))
+                standardCheckIn = parsedTime;
+
+            // Convert check-in time to local and compare
+            var localCheckIn = TimeZoneInfo.ConvertTimeFromUtc(checkInTime, TimeZoneInfo.Local);
+            var checkInTimeOfDay = localCheckIn.TimeOfDay;
+            // Allow 15 min grace
+            bool isLate = checkInTimeOfDay > standardCheckIn.Add(new TimeSpan(0, 15, 0));
+            var status = isLate ? "Late" : "Present";
+
             if (existingAttendance == null)
             {
-                var employee = await _context.Employees.FindAsync(employeeId);
                 existingAttendance = new Attendance
                 {
-                    TenantId = employee?.TenantId ?? 0,
+                    TenantId = tenantId,
                     EmployeeId = employeeId,
                     Date = today,
                     CheckInTime = checkInTime,
-                    Status = "Present",
+                    Status = status,
                     Location = request.Location,
                     Notes = request.Notes,
                     CreatedAt = now,
@@ -80,7 +114,7 @@ namespace BankAPI.Services
             else
             {
                 existingAttendance.CheckInTime = checkInTime;
-                existingAttendance.Status = "Present";
+                existingAttendance.Status = status;
                 existingAttendance.Location = request.Location;
                 existingAttendance.Notes = request.Notes;
                 existingAttendance.UpdatedAt = now;
@@ -104,6 +138,18 @@ namespace BankAPI.Services
         public async Task<AttendanceDto> CheckOut(long employeeId, CheckOutRequest request)
         {
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+            // Get employee and tenantId
+            var employee = await _context.Employees.FindAsync(employeeId);
+            var tenantId = employee?.TenantId ?? 0;
+
+            // Check if today is a holiday for the tenant
+            var todayDateTimeUtc = DateTime.SpecifyKind(today.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            bool isHoliday = await _context.Holidays.AnyAsync(h => h.TenantId == tenantId && h.Date == todayDateTimeUtc);
+            if (isHoliday)
+            {
+                throw new InvalidOperationException("Check-out is not allowed on a holiday.");
+            }
 
             var attendance = await _context.Attendances
                 .Where(a => a.EmployeeId == employeeId && a.Date == today)
@@ -153,28 +199,114 @@ namespace BankAPI.Services
             };
         }
 
-        public async Task<List<AttendanceDto>> GetAttendanceHistory(long employeeId, int days = 30)
+        public async Task<List<AttendanceDto>> GetAttendanceHistory(long employeeId, int days = 5)
         {
-            var startDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-days));
+            var startDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-(days)));
+            var endDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1));
 
-            var attendances = await _context.Attendances
-                .Where(a => a.EmployeeId == employeeId && a.Date >= startDate)
-                .OrderByDescending(a => a.Date)
-                .Select(a => new AttendanceDto
-                {
-                    Id = a.Id,
-                    Date = a.Date.ToString("yyyy-MM-dd"),
-                    CheckInTime = a.CheckInTime.HasValue ? a.CheckInTime.Value.ToString("hh:mm tt") : null,
-                    CheckOutTime = a.CheckOutTime.HasValue ? a.CheckOutTime.Value.ToString("hh:mm tt") : null,
-                    Status = a.Status,
-                    WorkHours = a.WorkHours,
-                    Location = a.Location,
-                    Notes = a.Notes,
-                    ProductivityRating = a.ProductivityRating
-                })
+            // Get employee and tenantId
+            var employee = await _context.Employees.FindAsync(employeeId);
+            var tenantId = employee?.TenantId ?? 0;
+
+            // Get all holidays for the tenant in the range (ensure UTC kind)
+            var startDateTimeUtc = DateTime.SpecifyKind(startDate.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            var endDateTimeUtc = DateTime.SpecifyKind(endDate.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            var holidays = await _context.Holidays
+                .Where(h => h.TenantId == tenantId && h.Date >= startDateTimeUtc && h.Date <= endDateTimeUtc)
+                .Select(h => DateOnly.FromDateTime(h.Date))
                 .ToListAsync();
 
-            return attendances;
+            // Get all attendance records in range
+            var attendanceDict = await _context.Attendances
+                .Where(a => a.EmployeeId == employeeId && a.Date >= startDate && a.Date <= endDate)
+                .ToDictionaryAsync(a => a.Date);
+
+            // Get all approved leave requests for this employee in the range
+            var approvedLeaves = await _context.LeaveRequests
+                .Where(lr => lr.EmployeeId == employeeId && lr.Status == "Approved" &&
+                    lr.StartDate <= endDate && lr.EndDate >= startDate)
+                .ToListAsync();
+
+            // Build a set of all leave dates
+            var leaveDates = new HashSet<DateOnly>();
+            foreach (var leave in approvedLeaves)
+            {
+                var leaveStart = leave.StartDate < startDate ? startDate : leave.StartDate;
+                var leaveEnd = leave.EndDate > endDate ? endDate : leave.EndDate;
+                for (var d = leaveStart; d <= leaveEnd; d = d.AddDays(1))
+                {
+                    leaveDates.Add(d);
+                }
+            }
+
+            var result = new List<AttendanceDto>();
+            for (var date = endDate; date >= startDate; date = date.AddDays(-1))
+            {
+                if (holidays.Contains(date))
+                {
+                    result.Add(new AttendanceDto
+                    {
+                        Id = 0,
+                        Date = date.ToString("yyyy-MM-dd"),
+                        Status = "Holiday",
+                        WorkHours = 0,
+                        CheckInTime = null,
+                        CheckOutTime = null,
+                        Location = null,
+                        Notes = null,
+                        ProductivityRating = null
+                    });
+                    continue;
+                }
+
+                if (attendanceDict.TryGetValue(date, out var attendance))
+                {
+                    result.Add(new AttendanceDto
+                    {
+                        Id = attendance.Id,
+                        Date = attendance.Date.ToString("yyyy-MM-dd"),
+                        CheckInTime = attendance.CheckInTime.HasValue ? attendance.CheckInTime.Value.ToString("hh:mm tt") : null,
+                        CheckOutTime = attendance.CheckOutTime.HasValue ? attendance.CheckOutTime.Value.ToString("hh:mm tt") : null,
+                        Status = attendance.Status,
+                        WorkHours = attendance.WorkHours,
+                        Location = attendance.Location,
+                        Notes = attendance.Notes,
+                        ProductivityRating = attendance.ProductivityRating
+                    });
+                }
+                else if (leaveDates.Contains(date))
+                {
+                    result.Add(new AttendanceDto
+                    {
+                        Id = 0,
+                        Date = date.ToString("yyyy-MM-dd"),
+                        Status = "Leave",
+                        WorkHours = 0,
+                        CheckInTime = null,
+                        CheckOutTime = null,
+                        Location = null,
+                        Notes = null,
+                        ProductivityRating = null
+                    });
+                }
+                else
+                {
+                    result.Add(new AttendanceDto
+                    {
+                        Id = 0,
+                        Date = date.ToString("yyyy-MM-dd"),
+                        Status = "Absent",
+                        WorkHours = 0,
+                        CheckInTime = null,
+                        CheckOutTime = null,
+                        Location = null,
+                        Notes = null,
+                        ProductivityRating = null
+                    });
+                }
+            }
+
+            return result;
         }
 
         public async Task<AttendanceDto> ManualMarkAttendance(string employeeId, string date, string status, decimal workHours)
@@ -186,11 +318,20 @@ namespace BankAPI.Services
                 throw new Exception("Cannot mark attendance for a future date.");
             var attendance = await _context.Attendances.FirstOrDefaultAsync(a => a.EmployeeId == employee.Id && a.Date == dateObj);
             var now = DateTime.UtcNow;
-            // Set default check-in time to 9:00 AM local time, then convert to UTC
-            var localCheckIn = new DateTime(dateObj.Year, dateObj.Month, dateObj.Day, 9, 0, 0, DateTimeKind.Local);
+            // Get check-in and check-out settings for tenant (default 9:00 AM and 18:00 PM if not set)
+            TimeSpan standardCheckIn = new TimeSpan(9, 0, 0);
+            TimeSpan standardCheckOut = new TimeSpan(18, 0, 0);
+            var checkInSetting = await _context.Settings.FirstOrDefaultAsync(s => s.TenantId == employee.TenantId && s.Key == "checkIn");
+            if (checkInSetting != null && TimeSpan.TryParse(checkInSetting.Value, out var parsedCheckIn))
+                standardCheckIn = parsedCheckIn;
+            var checkOutSetting = await _context.Settings.FirstOrDefaultAsync(s => s.TenantId == employee.TenantId && s.Key == "checkOut");
+            if (checkOutSetting != null && TimeSpan.TryParse(checkOutSetting.Value, out var parsedCheckOut))
+                standardCheckOut = parsedCheckOut;
+
+            // Set check-in and check-out time based on config
+            var localCheckIn = new DateTime(dateObj.Year, dateObj.Month, dateObj.Day, standardCheckIn.Hours, standardCheckIn.Minutes, 0, DateTimeKind.Local);
             var checkInDateTime = localCheckIn.ToUniversalTime();
-            // Calculate check-out time based on workHours, then convert to UTC
-            var localCheckOut = localCheckIn.AddHours((double)workHours);
+            var localCheckOut = new DateTime(dateObj.Year, dateObj.Month, dateObj.Day, standardCheckOut.Hours, standardCheckOut.Minutes, 0, DateTimeKind.Local);
             var checkOutDateTime = localCheckOut.ToUniversalTime();
             if (attendance == null)
             {
@@ -228,6 +369,19 @@ namespace BankAPI.Services
         public async Task<AttendanceDto> UpdateProductivityRating(long employeeId, int rating)
         {
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+            // Get employee and tenantId
+            var employee = await _context.Employees.FindAsync(employeeId);
+            var tenantId = employee?.TenantId ?? 0;
+
+            // Check if today is a holiday for the tenant
+            var todayDateTimeUtc = DateTime.SpecifyKind(today.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            bool isHoliday = await _context.Holidays.AnyAsync(h => h.TenantId == tenantId && h.Date == todayDateTimeUtc);
+            if (isHoliday)
+            {
+                throw new InvalidOperationException("Productivity rating cannot be submitted on a holiday.");
+            }
+
             var attendance = await _context.Attendances
                 .Where(a => a.EmployeeId == employeeId && a.Date == today)
                 .FirstOrDefaultAsync();

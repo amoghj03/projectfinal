@@ -73,12 +73,19 @@ const EmployeeTracking = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const hasFetchedData = useRef(false);
 
+  // Holiday blocking state
+  const [isHoliday, setIsHoliday] = useState(false);
+
+  // ...existing code...
+
   useEffect(() => {
     if (!hasFetchedData.current) {
       hasFetchedData.current = true;
       fetchAllData();
     }
   }, []);
+
+  // No weekend logic needed, only holiday logic is used for blocking
 
   const showSnackbar = (message, severity = 'success') => {
     setSnackbar({ open: true, message, severity });
@@ -104,6 +111,8 @@ const EmployeeTracking = () => {
       const response = await attendanceService.getTodayAttendance();
       if (response.success && response.data) {
         const attendance = response.data;
+        setIsHoliday(!!attendance.isHoliday);
+        // Check for check-in and check-out times
         if (attendance.checkInTime) {
           setCheckedIn(true);
           setCheckInTime(attendance.checkInTime);
@@ -232,7 +241,17 @@ const EmployeeTracking = () => {
     }
   };
 
+  const isBlockedByHoliday = isHoliday;
+
+  const showBlockedSnackbar = () => {
+    showSnackbar('Not allowed as today is a holiday', 'warning');
+  };
+
   const handleCheckIn = async () => {
+    if (isBlockedByHoliday) {
+      showBlockedSnackbar();
+      return;
+    }
     setLoading(true);
     try {
       const response = await attendanceService.checkIn();
@@ -255,6 +274,10 @@ const EmployeeTracking = () => {
   };
 
   const handleCheckOut = async () => {
+    if (isBlockedByHoliday) {
+      showBlockedSnackbar();
+      return;
+    }
     setLoading(true);
     try {
       const response = await attendanceService.checkOut();
@@ -277,6 +300,10 @@ const EmployeeTracking = () => {
   };
 
   const handleAddWorkItem = async () => {
+    if (isBlockedByHoliday) {
+      showBlockedSnackbar();
+      return;
+    }
     if (newWorkItem.title.trim() === '') return;
     
     setLoading(true);
@@ -306,6 +333,10 @@ const EmployeeTracking = () => {
   };
 
   const submitRating = async () => {
+    if (isBlockedByHoliday) {
+      showBlockedSnackbar();
+      return;
+    }
     setLoading(true);
     try {
       // Check if checked in (attendance marked)
@@ -383,6 +414,8 @@ const EmployeeTracking = () => {
         <Typography variant="h4" gutterBottom sx={{ mb: 4 }}>
           Employee Tracking
         </Typography>
+
+        {/* ...existing code... */}
 
         {loading && workItems.length === 0 && attendanceHistory.length === 0 ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>

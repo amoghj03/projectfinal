@@ -53,33 +53,21 @@ namespace BankAPI.Services
 
             long? tenantId = employee?.TenantId;
 
-            // Get the 'No weekends' setting for the tenant from the settings table
-            var noWeekendsSetting = await _context.Settings
-                .Where(s => s.Key == "No weekends" && s.TenantId == tenantId)
-                .OrderByDescending(s => s.CreatedAt)
-                .FirstOrDefaultAsync();
-
-            bool noWeekends = false;
-            if (noWeekendsSetting != null &&
-                (noWeekendsSetting.Value?.ToLower() == "true" || noWeekendsSetting.Value == "1"))
-            {
-                noWeekends = true;
-            }
-
             int today = now.Day;
-            int totalWorkingDays;
-            if (noWeekends)
-            {
-                // Consider all days from 1st to today (including weekends)
-                totalWorkingDays = today;
-            }
-            else
-            {
-                // Exclude weekends
-                totalWorkingDays = Enumerable.Range(1, today)
-                    .Select(day => new DateTime(currentYear, currentMonth, day))
-                    .Count(date => date.DayOfWeek != DayOfWeek.Saturday && date.DayOfWeek != DayOfWeek.Sunday);
-            }
+            // Get all holidays for the tenant in the current month
+            var holidays = await _context.Holidays
+                .Where(h => h.TenantId == tenantId &&
+                            h.Date.Month == currentMonth &&
+                            h.Date.Year == currentYear)
+                .Select(h => h.Date.Day)
+                .ToListAsync();
+
+            // Exclude holidays from working days
+            var workingDays = Enumerable.Range(1, today)
+                .Where(day => !holidays.Contains(day))
+                .ToList();
+
+            int totalWorkingDays = workingDays.Count;
 
             var attendanceRate = totalWorkingDays > 0
                 ? Math.Round((decimal)presentDays / totalWorkingDays * 100, 1)

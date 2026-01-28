@@ -271,7 +271,7 @@ const LeaveRequest = () => {
         }
       } catch (error) {
         console.error('Error submitting leave request:', error);
-        showSnackbar('An error occurred while submitting leave request', 'error');
+        showSnackbar(error.response.data.message ||'An error occurred while submitting leave request', 'error');
       } finally {
         setLoading(false);
       }

@@ -75,6 +75,21 @@ public class LeaveService : ILeaveService
                 };
             }
 
+            // Check if any date in the range is a holiday
+            var startDateOnly = DateOnly.FromDateTime(startDate);
+            var endDateOnly = DateOnly.FromDateTime(endDate);
+            var holidays = await _context.Holidays
+                .Where(h => h.TenantId == employee.TenantId && h.Date >= DateTime.SpecifyKind(startDateOnly.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc) && h.Date <= DateTime.SpecifyKind(endDateOnly.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc))
+                .ToListAsync();
+            if (holidays.Any())
+            {
+                return new LeaveRequestResponse
+                {
+                    Success = false,
+                    Message = "Cannot submit leave request: one or more days in the requested range are holidays."
+                };
+            }
+
             // Calculate days
             decimal totalDays;
             if (request.IsHalfDay)

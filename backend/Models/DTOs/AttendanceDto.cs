@@ -42,4 +42,5 @@ public class TodayAttendanceDto
     public string? Status { get; set; }
     public decimal? WorkHours { get; set; }
     public int? ProductivityRating { get; set; }
+    public bool IsHoliday { get; set; }
 }
