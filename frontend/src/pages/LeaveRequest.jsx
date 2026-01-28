@@ -175,27 +175,23 @@ const LeaveRequest = () => {
   };
 
   const handleInputChange = (field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-
-    // Auto-set end date to start date for half day
-    if (field === 'isHalfDay' && value === true) {
-      setFormData((prev) => ({
-        ...prev,
-        isHalfDay: true,
-        endDate: prev.startDate,
-      }));
-    }
-
-    // Clear end date if half day is unchecked
-    if (field === 'isHalfDay' && value === false) {
-      setFormData((prev) => ({
-        ...prev,
-        isHalfDay: false,
-      }));
-    }
+    setFormData((prev) => {
+      let updated = { ...prev, [field]: value };
+      // If startDate is changed, auto-set endDate to same value (unless half day)
+      if (field === 'startDate' && !prev.isHalfDay) {
+        updated.endDate = value;
+      }
+      // Auto-set end date to start date for half day
+      if (field === 'isHalfDay' && value === true) {
+        updated.isHalfDay = true;
+        updated.endDate = updated.startDate;
+      }
+      // Clear end date if half day is unchecked
+      if (field === 'isHalfDay' && value === false) {
+        updated.isHalfDay = false;
+      }
+      return updated;
+    });
 
     if (errors[field]) {
       setErrors((prev) => ({
@@ -271,7 +267,7 @@ const LeaveRequest = () => {
         }
       } catch (error) {
         console.error('Error submitting leave request:', error);
-        showSnackbar(error.response.data.message ||'An error occurred while submitting leave request', 'error');
+        showSnackbar(error.response.data.message ||'An error occurred while submitting leave request', 'warning');
       } finally {
         setLoading(false);
       }
@@ -519,7 +515,7 @@ const LeaveRequest = () => {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12}>
+              {/* <Grid item xs={12}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <input
                     type="checkbox"
@@ -528,7 +524,7 @@ const LeaveRequest = () => {
                   />
                   <Typography variant="body2">Half Day Leave</Typography>
                 </Box>
-              </Grid>
+              </Grid> */}
 
               {formData.isHalfDay && (
                 <Grid item xs={12}>

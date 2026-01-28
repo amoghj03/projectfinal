@@ -22,9 +22,17 @@ namespace BankAPI.Services
             var employee = await _context.Employees.FindAsync(employeeId);
             var tenantId = employee?.TenantId ?? 0;
 
-            // Check if today is a holiday for the tenant
+            // Check if today is a holiday for the tenant (global or branch-specific)
             var todayDateTimeUtc = DateTime.SpecifyKind(today.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
-            bool isHoliday = await _context.Holidays.AnyAsync(h => h.TenantId == tenantId && h.Date == todayDateTimeUtc);
+            var branchId = employee?.BranchId;
+            bool isHoliday = await _context.Holidays.AnyAsync(h =>
+                h.TenantId == tenantId &&
+                h.Date == todayDateTimeUtc &&
+                (
+                    h.BranchId == null || // Global holiday
+                    (branchId != null && h.BranchId == branchId) // Branch-specific holiday
+                )
+            );
 
             var attendance = await _context.Attendances
                 .Where(a => a.EmployeeId == employeeId && a.Date == today)
@@ -61,9 +69,17 @@ namespace BankAPI.Services
             var employee = await _context.Employees.FindAsync(employeeId);
             var tenantId = employee?.TenantId ?? 0;
 
-            // Check if today is a holiday for the tenant
+            // Check if today is a holiday for the tenant (global or branch-specific)
             var todayDateTimeUtc = DateTime.SpecifyKind(today.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
-            bool isHoliday = await _context.Holidays.AnyAsync(h => h.TenantId == tenantId && h.Date == todayDateTimeUtc);
+            var branchId = employee?.BranchId;
+            bool isHoliday = await _context.Holidays.AnyAsync(h =>
+                h.TenantId == tenantId &&
+                h.Date == todayDateTimeUtc &&
+                (
+                    h.BranchId == null || // Global holiday
+                    (branchId != null && h.BranchId == branchId) // Branch-specific holiday
+                )
+            );
             if (isHoliday)
             {
                 throw new InvalidOperationException("Check-in is not allowed on a holiday.");
@@ -143,9 +159,17 @@ namespace BankAPI.Services
             var employee = await _context.Employees.FindAsync(employeeId);
             var tenantId = employee?.TenantId ?? 0;
 
-            // Check if today is a holiday for the tenant
+            // Check if today is a holiday for the tenant (global or branch-specific)
             var todayDateTimeUtc = DateTime.SpecifyKind(today.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
-            bool isHoliday = await _context.Holidays.AnyAsync(h => h.TenantId == tenantId && h.Date == todayDateTimeUtc);
+            var branchId = employee?.BranchId;
+            bool isHoliday = await _context.Holidays.AnyAsync(h =>
+                h.TenantId == tenantId &&
+                h.Date == todayDateTimeUtc &&
+                (
+                    h.BranchId == null || // Global holiday
+                    (branchId != null && h.BranchId == branchId) // Branch-specific holiday
+                )
+            );
             if (isHoliday)
             {
                 throw new InvalidOperationException("Check-out is not allowed on a holiday.");
@@ -208,11 +232,19 @@ namespace BankAPI.Services
             var employee = await _context.Employees.FindAsync(employeeId);
             var tenantId = employee?.TenantId ?? 0;
 
-            // Get all holidays for the tenant in the range (ensure UTC kind)
+            // Get all holidays for the tenant in the range (global or branch-specific)
             var startDateTimeUtc = DateTime.SpecifyKind(startDate.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
             var endDateTimeUtc = DateTime.SpecifyKind(endDate.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            var branchId = employee?.BranchId;
             var holidays = await _context.Holidays
-                .Where(h => h.TenantId == tenantId && h.Date >= startDateTimeUtc && h.Date <= endDateTimeUtc)
+                .Where(h =>
+                    h.TenantId == tenantId &&
+                    h.Date >= startDateTimeUtc && h.Date <= endDateTimeUtc &&
+                    (
+                        h.BranchId == null || // Global holiday
+                        (branchId != null && h.BranchId == branchId) // Branch-specific holiday
+                    )
+                )
                 .Select(h => DateOnly.FromDateTime(h.Date))
                 .ToListAsync();
 
@@ -374,9 +406,17 @@ namespace BankAPI.Services
             var employee = await _context.Employees.FindAsync(employeeId);
             var tenantId = employee?.TenantId ?? 0;
 
-            // Check if today is a holiday for the tenant
+            // Check if today is a holiday for the tenant (global or branch-specific)
             var todayDateTimeUtc = DateTime.SpecifyKind(today.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
-            bool isHoliday = await _context.Holidays.AnyAsync(h => h.TenantId == tenantId && h.Date == todayDateTimeUtc);
+            var branchId = employee?.BranchId;
+            bool isHoliday = await _context.Holidays.AnyAsync(h =>
+                h.TenantId == tenantId &&
+                h.Date == todayDateTimeUtc &&
+                (
+                    h.BranchId == null || // Global holiday
+                    (branchId != null && h.BranchId == branchId) // Branch-specific holiday
+                )
+            );
             if (isHoliday)
             {
                 throw new InvalidOperationException("Productivity rating cannot be submitted on a holiday.");

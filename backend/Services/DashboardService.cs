@@ -45,20 +45,28 @@ namespace BankAPI.Services
             var presentDays = currentAttendance.Count(a => a.Status == "Present" || a.Status == "Late");
             var absentDays = currentAttendance.Count(a => a.Status == "Absent");
 
-            // Get the tenant_id for the employee
+
+            // Get the tenant_id and branch_id for the employee
             var employee = await _context.Employees
                 .Where(e => e.Id == employeeId)
-                .Select(e => new { e.TenantId })
+                .Select(e => new { e.TenantId, e.BranchId })
                 .FirstOrDefaultAsync();
 
             long? tenantId = employee?.TenantId;
+            long? branchId = employee?.BranchId;
 
             int today = now.Day;
-            // Get all holidays for the tenant in the current month
+            // Get all holidays for the tenant in the current month (global or branch-specific)
             var holidays = await _context.Holidays
-                .Where(h => h.TenantId == tenantId &&
-                            h.Date.Month == currentMonth &&
-                            h.Date.Year == currentYear)
+                .Where(h =>
+                    h.TenantId == tenantId &&
+                    h.Date.Month == currentMonth &&
+                    h.Date.Year == currentYear &&
+                    (
+                        h.BranchId == null || // Global holiday
+                        (branchId != null && h.BranchId == branchId) // Branch-specific holiday
+                    )
+                )
                 .Select(h => h.Date.Day)
                 .ToListAsync();
 

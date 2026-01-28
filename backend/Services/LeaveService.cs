@@ -75,11 +75,20 @@ public class LeaveService : ILeaveService
                 };
             }
 
-            // Check if any date in the range is a holiday
+            // Check if any date in the range is a holiday (global or branch-specific)
             var startDateOnly = DateOnly.FromDateTime(startDate);
             var endDateOnly = DateOnly.FromDateTime(endDate);
+            var branchId = employee.BranchId;
             var holidays = await _context.Holidays
-                .Where(h => h.TenantId == employee.TenantId && h.Date >= DateTime.SpecifyKind(startDateOnly.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc) && h.Date <= DateTime.SpecifyKind(endDateOnly.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc))
+                .Where(h =>
+                    h.TenantId == employee.TenantId &&
+                    h.Date >= DateTime.SpecifyKind(startDateOnly.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc) &&
+                    h.Date <= DateTime.SpecifyKind(endDateOnly.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc) &&
+                    (
+                        h.BranchId == null || // Global holiday
+                        (branchId != null && h.BranchId == branchId) // Branch-specific holiday
+                    )
+                )
                 .ToListAsync();
             if (holidays.Any())
             {
