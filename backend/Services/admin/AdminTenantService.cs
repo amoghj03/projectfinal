@@ -292,7 +292,9 @@ public class AdminTenantService
                 var defaultSettings = new List<Setting>
                 {
                     new Setting { TenantId = tenant.Id, Key = "RequireComplaintApproval", Value = "true", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-                    new Setting { TenantId = tenant.Id, Key = "TechIssueApproval", Value = "true", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
+                    new Setting { TenantId = tenant.Id, Key = "TechIssueApproval", Value = "true", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+                    new Setting { TenantId = tenant.Id, Key = "checkOut", Value = "5 PM", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+                    new Setting { TenantId = tenant.Id, Key = "checkIn", Value = "9 AM", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
                 };
 
                 _context.Set<Setting>().AddRange(defaultSettings);

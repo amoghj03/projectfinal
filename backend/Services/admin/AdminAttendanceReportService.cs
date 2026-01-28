@@ -51,15 +51,31 @@ namespace BankAPI.Services.Admin
                 {
                     var attendance = attendances.GetValueOrDefault(emp.Id);
                     var workLog = workLogs.GetValueOrDefault(emp.Id);
-                    string status = "absent";
-                    if (attendance != null && attendance.CheckInTime.HasValue)
+                    string status = "Absent";
+                    // Check for holiday (global or branch-specific)
+                    var holidayDate = DateTime.SpecifyKind(date.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+                    var holiday = await _context.Holidays.FirstOrDefaultAsync(h =>
+                        h.TenantId == emp.TenantId && h.Date.Date == holidayDate.Date && (h.BranchId == null || (emp.BranchId != null && h.BranchId == emp.BranchId)));
+                    if (holiday != null)
                     {
-                        var checkInTime = attendance.CheckInTime.Value;
-                        var standardTime = new DateTime(checkInTime.Year, checkInTime.Month, checkInTime.Day, 9, 0, 0);
-                        if (checkInTime > standardTime.AddMinutes(15))
-                            status = "late";
-                        else
-                            status = "present";
+                        status = "Holiday";
+                    }
+                    else
+                    {
+                        // Check for approved leave
+                        var leaveRequest = await _context.LeaveRequests.FirstOrDefaultAsync(l =>
+                            l.EmployeeId == emp.Id &&
+                            l.Status.ToLower() == "approved" &&
+                            l.StartDate <= date &&
+                            l.EndDate >= date);
+                        if (leaveRequest != null)
+                        {
+                            status = "Leave";
+                        }
+                        else if (attendance != null && !string.IsNullOrEmpty(attendance.Status))
+                        {
+                            status = attendance.Status;
+                        }
                     }
                     string? notes = null;
                     if (workLog != null)
@@ -78,8 +94,8 @@ namespace BankAPI.Services.Admin
                         Department = emp.Department,
                         Branch = emp.Branch?.Name,
                         Status = status,
-                        CheckInTime = attendance?.CheckInTime?.ToString("hh:mm tt"),
-                        CheckOutTime = attendance?.CheckOutTime?.ToString("hh:mm tt"),
+                        CheckInTime = attendance?.CheckInTime != null ? TimeZoneInfo.ConvertTimeFromUtc(attendance.CheckInTime.Value, TimeZoneInfo.FindSystemTimeZoneById("India Standard Time")).ToString("hh:mm tt") : null,
+                        CheckOutTime = attendance?.CheckOutTime != null ? TimeZoneInfo.ConvertTimeFromUtc(attendance.CheckOutTime.Value, TimeZoneInfo.FindSystemTimeZoneById("India Standard Time")).ToString("hh:mm tt") : null,
                         WorkHours = attendance?.WorkHours,
                         Location = attendance?.Location,
                         Notes = notes,
@@ -109,6 +125,7 @@ namespace BankAPI.Services.Admin
             if (!string.IsNullOrEmpty(employeeId))
                 query = query.Where(c => c.Employee.EmployeeId == employeeId);
             var complaints = await query.OrderByDescending(c => c.CreatedAt).ToListAsync();
+            var istZone = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time");
             return complaints.Select(c => new AdminComplaintDto
             {
                 Id = c.Id,
@@ -122,11 +139,11 @@ namespace BankAPI.Services.Admin
                 Category = c.Category.ToLower(),
                 Priority = c.Priority.ToLower(),
                 Status = c.Status,
-                SubmittedDate = c.CreatedAt,
-                LastUpdate = c.UpdatedAt,
+                SubmittedDate = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(c.CreatedAt, DateTimeKind.Utc), istZone),
+                LastUpdate = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(c.UpdatedAt, DateTimeKind.Utc), istZone),
                 Resolution = c.ResolutionNotes,
                 ResolvedBy = c.Employee?.FullName ?? "Unknown",//should be changed later for review
-                ResolvedDate = c.ResolvedAt
+                ResolvedDate = c.ResolvedAt.HasValue ? TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(c.ResolvedAt.Value, DateTimeKind.Utc), istZone) : (DateTime?)null
             }).ToList();
         }
 
@@ -148,6 +165,7 @@ namespace BankAPI.Services.Admin
             if (!string.IsNullOrEmpty(employeeId))
                 query = query.Where(t => t.Employee.EmployeeId == employeeId);
             var techIssues = await query.OrderByDescending(t => t.CreatedAt).ToListAsync();
+            var istZone = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time");
             return techIssues.Select(t => new AdminTechIssueDto
             {
                 Id = t.Id,
@@ -161,12 +179,12 @@ namespace BankAPI.Services.Admin
                 Category = t.Category,
                 Impact = t.Priority,
                 Status = t.Status,
-                SubmittedDate = t.CreatedAt,
-                LastUpdate = t.UpdatedAt,
+                SubmittedDate = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(t.CreatedAt, DateTimeKind.Utc), istZone),
+                LastUpdate = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(t.UpdatedAt, DateTimeKind.Utc), istZone),
                 EmployeeResolution = t.ResolutionNotes,
                 // Approval info (if available)
                 ApprovedBy = t.ApprovedByEmployee?.FullName,
-                ApprovedDate = t.ApprovedAt,
+                ApprovedDate = t.ApprovedAt.HasValue ? TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(t.ApprovedAt.Value, DateTimeKind.Utc), istZone) : (DateTime?)null,
             }).ToList();
         }
 

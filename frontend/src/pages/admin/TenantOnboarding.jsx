@@ -1,3 +1,5 @@
+import { LocalizationProvider, TimePicker } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -52,6 +54,39 @@ import tenantService from '../../services/tenantService';
 import branchService from '../../services/branchService';
 import adminEmployeeService from '../../services/adminEmployeeService';
 
+
+// Helper functions for time string <-> Date conversion (for TimePicker compatibility)
+function parseTimeStringToDate(timeStr) {
+  if (!timeStr) return null;
+  timeStr = timeStr.replace(/"/g, '');
+  const now = new Date();
+  let date = new Date(now);
+  const match = timeStr.match(/(\d{1,2})(:(\d{2}))?\s*(AM|PM)/i);
+  if (match) {
+    let hours = parseInt(match[1], 10);
+    const minutes = match[3] ? parseInt(match[3], 10) : 0;
+    const ampm = match[4].toUpperCase();
+    if (ampm === 'PM' && hours < 12) hours += 12;
+    if (ampm === 'AM' && hours === 12) hours = 0;
+    date.setHours(hours, minutes, 0, 0);
+    return date;
+  }
+  const parsed = Date.parse('01/01/2000 ' + timeStr);
+  if (!isNaN(parsed)) return new Date(parsed);
+  return now;
+}
+
+function formatDateToTimeString(date) {
+  if (!(date instanceof Date)) return date;
+  let hours = date.getHours();
+  const minutes = date.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  return minutes
+    ? `${hours}:${minutes.toString().padStart(2, '0')} ${ampm}`
+    : `${hours} ${ampm}`;
+}
 const steps = [
   'Tenant Information',
   'Branches Setup',
@@ -351,6 +386,11 @@ const TenantOnboarding = () => {
         adminUser: {
           ...formData.adminUser,
           dateOfBirth: formData.adminUser.dateOfBirth || null
+        },
+        settings: {
+          ...formData.settings,
+          checkIn: formData.settings.checkIn ? formatDateToTimeString(parseTimeStringToDate(formData.settings.checkIn)) : null,
+          checkOut: formData.settings.checkOut ? formatDateToTimeString(parseTimeStringToDate(formData.settings.checkOut)) : null
         }
       };
 
@@ -1337,21 +1377,34 @@ const TenantOnboarding = () => {
                     }
                     label="Tech Issue Approval Required"
                   />
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={formData.settings.NoWeekends === 'true'}
-                        onChange={(e) => setFormData({
+                  <Box display="flex" gap={2} mt={2}>
+                    <LocalizationProvider dateAdapter={AdapterDateFns}>
+                      <TimePicker
+                        label="Check In Time"
+                        value={formData.settings.checkIn ? parseTimeStringToDate(formData.settings.checkIn) : null}
+                        onChange={val => setFormData({
                           ...formData,
                           settings: {
                             ...formData.settings,
-                            NoWeekends: e.target.checked ? 'true' : 'false'
+                            checkIn: val ? formatDateToTimeString(val) : ''
                           }
                         })}
+                        renderInput={(params) => <TextField {...params} size="small" fullWidth />}
                       />
-                    }
-                    label="No Weekends"
-                  />
+                      <TimePicker
+                        label="Check Out Time"
+                        value={formData.settings.checkOut ? parseTimeStringToDate(formData.settings.checkOut) : null}
+                        onChange={val => setFormData({
+                          ...formData,
+                          settings: {
+                            ...formData.settings,
+                            checkOut: val ? formatDateToTimeString(val) : ''
+                          }
+                        })}
+                        renderInput={(params) => <TextField {...params} size="small" fullWidth />}
+                      />
+                    </LocalizationProvider>
+                  </Box>
                 </FormGroup>
               </CardContent>
             </Card>

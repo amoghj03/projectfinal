@@ -101,9 +101,16 @@ namespace BankAPI.Services
             // Get check-in setting for tenant (default 9:00 AM if not set)
             var checkInSetting = await _context.Settings.FirstOrDefaultAsync(s => s.TenantId == tenantId && s.Key == "checkIn");
             TimeSpan standardCheckIn = new TimeSpan(9, 0, 0);
-            if (checkInSetting != null && TimeSpan.TryParse(checkInSetting.Value, out var parsedTime))
-                standardCheckIn = parsedTime;
-
+            {
+                if (TimeSpan.TryParse(checkInSetting.Value, out var parsedTime))
+                {
+                    standardCheckIn = parsedTime;
+                }
+                else if (DateTime.TryParse(checkInSetting.Value, out var parsedDateTime))
+                {
+                    standardCheckIn = parsedDateTime.TimeOfDay;
+                }
+            }
             // Convert check-in time to local and compare
             var localCheckIn = TimeZoneInfo.ConvertTimeFromUtc(checkInTime, TimeZoneInfo.Local);
             var checkInTimeOfDay = localCheckIn.TimeOfDay;
