@@ -125,7 +125,7 @@ namespace BankAPI.Services
                     TenantId = tenantId,
                     EmployeeId = employeeId,
                     Date = today,
-                    CheckInTime = checkInTime,
+                    CheckInTime = checkInTime.AddHours(5).AddMinutes(30), // Convert to IST
                     Status = status,
                     Location = request.Location,
                     Notes = request.Notes,
@@ -136,7 +136,7 @@ namespace BankAPI.Services
             }
             else
             {
-                existingAttendance.CheckInTime = checkInTime;
+                existingAttendance.CheckInTime = checkInTime.AddHours(5).AddMinutes(30);
                 existingAttendance.Status = status;
                 existingAttendance.Location = request.Location;
                 existingAttendance.Notes = request.Notes;
@@ -149,8 +149,8 @@ namespace BankAPI.Services
             {
                 Id = existingAttendance.Id,
                 Date = existingAttendance.Date.ToString("yyyy-MM-dd"),
-                CheckInTime = existingAttendance.CheckInTime?.ToString("hh:mm tt"),
-                CheckOutTime = existingAttendance.CheckOutTime?.ToString("hh:mm tt"),
+                CheckInTime = existingAttendance.CheckInTime?.AddHours(5).AddMinutes(30).ToString("hh:mm tt"),
+                CheckOutTime = existingAttendance.CheckOutTime?.AddHours(5).AddMinutes(30).ToString("hh:mm tt"),
                 Status = existingAttendance.Status,
                 WorkHours = existingAttendance.WorkHours,
                 Location = existingAttendance.Location,
@@ -197,12 +197,12 @@ namespace BankAPI.Services
             }
 
             var now = DateTime.UtcNow;
-            attendance.CheckOutTime = now;
+            attendance.CheckOutTime = now.AddHours(5).AddMinutes(30);
 
             // Calculate work hours
             if (attendance.CheckInTime.HasValue)
             {
-                var workDuration = now - attendance.CheckInTime.Value;
+                var workDuration = now.AddHours(5).AddMinutes(30) - attendance.CheckInTime.Value;
                 attendance.WorkHours = (decimal)workDuration.TotalHours;
             }
 
@@ -392,8 +392,8 @@ namespace BankAPI.Services
             {
                 attendance.Status = "Present"; // Force status to Present
                 attendance.WorkHours = workHours;
-                attendance.CheckInTime = checkInDateTime;
-                attendance.CheckOutTime = checkOutDateTime;
+                attendance.CheckInTime = checkInDateTime.AddHours(5).AddMinutes(30);
+                attendance.CheckOutTime = checkOutDateTime.AddHours(5).AddMinutes(30);
                 attendance.UpdatedAt = now;
             }
             await _context.SaveChangesAsync();

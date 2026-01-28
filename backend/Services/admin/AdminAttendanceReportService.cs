@@ -94,8 +94,8 @@ namespace BankAPI.Services.Admin
                         Department = emp.Department,
                         Branch = emp.Branch?.Name,
                         Status = status,
-                        CheckInTime = attendance?.CheckInTime != null ? TimeZoneInfo.ConvertTimeFromUtc(attendance.CheckInTime.Value, TimeZoneInfo.FindSystemTimeZoneById("India Standard Time")).ToString("hh:mm tt") : null,
-                        CheckOutTime = attendance?.CheckOutTime != null ? TimeZoneInfo.ConvertTimeFromUtc(attendance.CheckOutTime.Value, TimeZoneInfo.FindSystemTimeZoneById("India Standard Time")).ToString("hh:mm tt") : null,
+                        CheckInTime = attendance?.CheckInTime?.ToString("hh:mm tt"),
+                        CheckOutTime = attendance?.CheckOutTime?.ToString("hh:mm tt"),
                         WorkHours = attendance?.WorkHours,
                         Location = attendance?.Location,
                         Notes = notes,
@@ -139,11 +139,11 @@ namespace BankAPI.Services.Admin
                 Category = c.Category.ToLower(),
                 Priority = c.Priority.ToLower(),
                 Status = c.Status,
-                SubmittedDate = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(c.CreatedAt, DateTimeKind.Utc), istZone),
-                LastUpdate = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(c.UpdatedAt, DateTimeKind.Utc), istZone),
+                SubmittedDate = c.CreatedAt,
+                LastUpdate = c.UpdatedAt,
                 Resolution = c.ResolutionNotes,
                 ResolvedBy = c.Employee?.FullName ?? "Unknown",//should be changed later for review
-                ResolvedDate = c.ResolvedAt.HasValue ? TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(c.ResolvedAt.Value, DateTimeKind.Utc), istZone) : (DateTime?)null
+                ResolvedDate = c.ResolvedAt
             }).ToList();
         }
 
@@ -179,12 +179,12 @@ namespace BankAPI.Services.Admin
                 Category = t.Category,
                 Impact = t.Priority,
                 Status = t.Status,
-                SubmittedDate = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(t.CreatedAt, DateTimeKind.Utc), istZone),
-                LastUpdate = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(t.UpdatedAt, DateTimeKind.Utc), istZone),
+                SubmittedDate = t.CreatedAt,
+                LastUpdate = t.UpdatedAt,
                 EmployeeResolution = t.ResolutionNotes,
                 // Approval info (if available)
                 ApprovedBy = t.ApprovedByEmployee?.FullName,
-                ApprovedDate = t.ApprovedAt.HasValue ? TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(t.ApprovedAt.Value, DateTimeKind.Utc), istZone) : (DateTime?)null,
+                ApprovedDate = t.ApprovedAt,
             }).ToList();
         }
 
