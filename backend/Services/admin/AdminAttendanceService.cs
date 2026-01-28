@@ -60,6 +60,17 @@ namespace BankAPI.Services.Admin
                 .Where(w => w.Date == targetDate)
                 .ToDictionaryAsync(w => w.EmployeeId, w => w);
 
+            // Get holidays for the target date (global and branch-specific)
+            var holidayDate = DateTime.SpecifyKind(targetDate.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            var holidaysForDate = await _context.Holidays
+                .Where(h => h.TenantId == request.TenantId && h.Date.Date == holidayDate.Date)
+                .ToListAsync();
+
+            // Get approved leave requests for the target date
+            var leaveRequests = await _context.LeaveRequests
+                .Where(lr => lr.Status == "Approved" && lr.StartDate <= targetDate && lr.EndDate >= targetDate)
+                .ToListAsync();
+
             // Build the result
             var result = employees.Select(emp =>
             {
@@ -67,19 +78,26 @@ namespace BankAPI.Services.Admin
                 var workLog = workLogs.GetValueOrDefault(emp.Id);
 
                 string status = "absent";
-                if (attendance != null && attendance.CheckInTime.HasValue)
-                {
-                    // Check if late (assuming 9:00 AM as standard time)
-                    var checkInTime = attendance.CheckInTime.Value;
-                    var standardTime = new DateTime(checkInTime.Year, checkInTime.Month, checkInTime.Day, 9, 0, 0);
 
-                    if (checkInTime > standardTime.AddMinutes(15))
+                // Check if today is a holiday for this employee (global or their branch)
+                bool empHoliday = holidaysForDate.Any(h => h.BranchId == null || (emp.BranchId != null && h.BranchId == emp.BranchId));
+
+                if (empHoliday)
+                {
+                    status = "Holiday";
+                }
+                else
+                {
+                    // Check if employee is on approved leave for this date
+                    bool onLeave = leaveRequests.Any(lr => lr.EmployeeId == emp.Id);
+                    if (onLeave)
                     {
-                        status = "late";
+                        status = "Leave";
                     }
-                    else
+                    else if (attendance != null && !string.IsNullOrEmpty(attendance.Status))
                     {
-                        status = "present";
+                        // Use status from DB (e.g., "Present", "Late")
+                        status = attendance.Status;
                     }
                 }
 
@@ -152,30 +170,41 @@ namespace BankAPI.Services.Admin
 
             long tenantId = request.TenantId;
 
-            // Check if organization works on weekends
-            var noWeekendsSetting = await _context.Settings
-                .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.Key == "No weekends" && s.Value.ToLower() == "true");
-            bool includeWeekends = noWeekendsSetting != null;
+            // Calculate total working days by excluding holidays (global and branch-specific)
+            // Get all holidays for the tenant and (optionally) branch in the date range
+            // Ensure all DateTime values are UTC for PostgreSQL compatibility
+            var holidayStartDate = DateTime.SpecifyKind(startDate.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            var holidayEndDate = DateTime.SpecifyKind(lastDayToCount.ToDateTime(TimeOnly.MaxValue), DateTimeKind.Utc);
+            var holidayQuery = _context.Holidays.Where(h => h.TenantId == tenantId && h.Date >= holidayStartDate && h.Date <= holidayEndDate);
+            if (!string.IsNullOrEmpty(request.Branch))
+            {
+                // Find branchId for the branch name
+                var branch = await _context.Branches.FirstOrDefaultAsync(b => b.Name == request.Branch && b.TenantId == tenantId);
+                if (branch != null)
+                {
+                    var branchId = branch.Id;
+                    // Holidays for this branch or global holidays
+                    holidayQuery = holidayQuery.Where(h => h.BranchId == null || h.BranchId == branchId);
+                }
+            }
+            else
+            {
+                // Only global holidays (BranchId == null)
+                holidayQuery = holidayQuery.Where(h => h.BranchId == null);
+            }
+            var holidays = await holidayQuery.ToListAsync();
+            var holidayDates = new HashSet<DateOnly>(holidays.Select(h => DateOnly.FromDateTime(h.Date)));
 
-            // Calculate total working days (excluding weekends unless setting says otherwise)
             int totalWorkingDays = 0;
             for (var date = startDate; date <= lastDayToCount; date = date.AddDays(1))
             {
-                if (includeWeekends)
+                if (!holidayDates.Contains(date))
                 {
-                    // Count all days if no weekends setting is enabled
                     totalWorkingDays++;
                 }
-                else
-                {
-                    // Exclude weekends
-                    var dayOfWeek = date.DayOfWeek;
-                    if (dayOfWeek != DayOfWeek.Saturday && dayOfWeek != DayOfWeek.Sunday)
-                    {
-                        totalWorkingDays++;
-                    }
-                }
             }
+            // For compatibility, set includeWeekends to true (all days are considered, but holidays are excluded)
+            bool includeWeekends = true;
 
             // Start with employees filtered by tenant
             var query = _context.Employees
@@ -212,40 +241,37 @@ namespace BankAPI.Services.Admin
                 .GroupBy(a => a.EmployeeId)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
-            // Calculate monthly summary for each employee
+            // Pre-fetch all approved leave requests for the month for all employees
+            var leaveRequests = await _context.LeaveRequests
+                .Where(lr => lr.Status == "Approved" && lr.StartDate <= lastDayToCount && lr.EndDate >= startDate)
+                .ToListAsync();
+
             var result = employees.Select(emp =>
             {
                 var empAttendances = attendancesByEmployee.GetValueOrDefault(emp.Id, new List<Attendance>());
 
-                int presentDays = 0;
-                int lateDays = 0;
-                decimal totalHours = 0;
+                // Count Present and Late days directly from attendance.Status
+                int presentDays = empAttendances.Count(a => a.Status == "Present");
+                int lateDays = empAttendances.Count(a => a.Status == "Late");
+                decimal totalHours = empAttendances.Where(a => a.Status == "Present" || a.Status == "Late").Sum(a => a.WorkHours ?? 0);
 
-                foreach (var att in empAttendances)
+                // Calculate leave taken (approved leaves, excluding holidays)
+                var empLeaves = leaveRequests.Where(lr => lr.EmployeeId == emp.Id);
+                int leaveTaken = 0;
+                foreach (var lr in empLeaves)
                 {
-                    if (att.CheckInTime.HasValue)
+                    var leaveStart = lr.StartDate < startDate ? startDate : lr.StartDate;
+                    var leaveEnd = lr.EndDate > lastDayToCount ? lastDayToCount : lr.EndDate;
+                    for (var d = leaveStart; d <= leaveEnd; d = d.AddDays(1))
                     {
-                        // Check if late
-                        var checkInTime = att.CheckInTime.Value;
-                        var standardTime = new DateTime(checkInTime.Year, checkInTime.Month, checkInTime.Day, 9, 0, 0);
-
-                        if (checkInTime > standardTime.AddMinutes(15))
+                        if (!holidayDates.Contains(d))
                         {
-                            lateDays++;
-                        }
-                        else
-                        {
-                            presentDays++;
-                        }
-
-                        if (att.WorkHours.HasValue)
-                        {
-                            totalHours += att.WorkHours.Value;
+                            leaveTaken++;
                         }
                     }
                 }
 
-                int absentDays = totalWorkingDays - presentDays - lateDays;
+                int absentDays = totalWorkingDays - presentDays - lateDays - leaveTaken;
                 decimal avgHours = (presentDays + lateDays) > 0 ? totalHours / (presentDays + lateDays) : 0;
                 decimal attendancePercentage = totalWorkingDays > 0
                     ? Math.Round((decimal)(presentDays + lateDays) / totalWorkingDays * 100, 1)
@@ -255,12 +281,12 @@ namespace BankAPI.Services.Admin
                 {
                     EmployeeId = emp.EmployeeId,
                     EmployeeName = emp.FullName,
-                    Department = emp.Department,
                     Branch = emp.Branch?.Name,
                     TotalDays = totalWorkingDays,
                     PresentDays = presentDays,
                     LateDays = lateDays,
                     AbsentDays = absentDays,
+                    LeaveTaken = leaveTaken,
                     AvgHours = Math.Round(avgHours, 1),
                     AttendancePercentage = attendancePercentage
                 };
@@ -289,21 +315,63 @@ namespace BankAPI.Services.Admin
 
             var startDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-days));
 
-            var attendances = await _context.Attendances
+            // Fetch all attendances for the employee in the date range
+            var attendancesRaw = await _context.Attendances
                 .Where(a => a.EmployeeId == employee.Id && a.Date >= startDate)
-                .OrderByDescending(a => a.Date)
-                .Select(a => new
-                {
-                    Date = a.Date.ToString("yyyy-MM-dd"),
-                    CheckInTime = a.CheckInTime.HasValue ? a.CheckInTime.Value.ToString("hh:mm tt") : null,
-                    CheckOutTime = a.CheckOutTime.HasValue ? a.CheckOutTime.Value.ToString("hh:mm tt") : null,
-                    Status = a.Status,
-                    WorkHours = a.WorkHours,
-                    Location = a.Location,
-                    Notes = a.Notes,
-                    ProductivityRating = a.ProductivityRating
-                })
                 .ToListAsync();
+
+            // Get all holidays for the employee's tenant and branch in the date range
+            var branchId = employee.BranchId;
+            var startDateTime = DateTime.SpecifyKind(startDate.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var endDateTime = DateTime.SpecifyKind(today.ToDateTime(TimeOnly.MaxValue), DateTimeKind.Utc);
+            var holidays = await _context.Holidays
+                .Where(h => h.TenantId == employee.TenantId && h.Date >= startDateTime && h.Date <= endDateTime && (h.BranchId == null || (branchId != null && h.BranchId == branchId)))
+                .ToListAsync();
+
+            // Get all approved leave requests for the employee in the date range
+            var leaveRequests = await _context.LeaveRequests
+                .Where(lr => lr.EmployeeId == employee.Id && lr.Status == "Approved" && lr.EndDate >= startDate)
+                .ToListAsync();
+
+            // Build attendance list for each day in the range (most recent first)
+            var attendances = new List<object>();
+            for (var d = today; d >= startDate; d = d.AddDays(-1))
+            {
+                var attendance = attendancesRaw.FirstOrDefault(a => a.Date == d);
+                var holiday = holidays.FirstOrDefault(h => h.Date.Date == DateTime.SpecifyKind(d.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc).Date && (h.BranchId == null || (branchId != null && h.BranchId == branchId)));
+                var onLeave = leaveRequests.Any(lr => lr.StartDate <= d && lr.EndDate >= d);
+
+                string status = null;
+                if (holiday != null)
+                {
+                    status = "Holiday";
+                }
+                else if (onLeave)
+                {
+                    status = "Leave";
+                }
+                else if (attendance != null && !string.IsNullOrEmpty(attendance.Status))
+                {
+                    status = attendance.Status;
+                }
+
+                // Only add if status is not null (i.e., not Absent)
+                if (!string.IsNullOrEmpty(status))
+                {
+                    attendances.Add(new
+                    {
+                        Date = d.ToString("yyyy-MM-dd"),
+                        CheckInTime = attendance?.CheckInTime.HasValue == true ? attendance.CheckInTime.Value.ToString("hh:mm tt") : null,
+                        CheckOutTime = attendance?.CheckOutTime.HasValue == true ? attendance.CheckOutTime.Value.ToString("hh:mm tt") : null,
+                        Status = status,
+                        WorkHours = attendance?.WorkHours,
+                        Location = attendance?.Location,
+                        Notes = attendance?.Notes,
+                        ProductivityRating = attendance?.ProductivityRating
+                    });
+                }
+            }
 
             return new
             {

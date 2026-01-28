@@ -55,27 +55,29 @@ namespace BankAPI.Services
             long? tenantId = employee?.TenantId;
             long? branchId = employee?.BranchId;
 
-            int today = now.Day;
-            // Get all holidays for the tenant in the current month (global or branch-specific)
-            var holidays = await _context.Holidays
+            // Calculate working days by excluding holidays (global and branch-specific) using DateTime
+            var monthStart = new DateTime(currentYear, currentMonth, 1, 0, 0, 0, DateTimeKind.Utc);
+            var todayDate = now.Date;
+            var holidayList = await _context.Holidays
                 .Where(h =>
                     h.TenantId == tenantId &&
-                    h.Date.Month == currentMonth &&
-                    h.Date.Year == currentYear &&
+                    h.Date >= monthStart && h.Date <= todayDate &&
                     (
                         h.BranchId == null || // Global holiday
                         (branchId != null && h.BranchId == branchId) // Branch-specific holiday
                     )
                 )
-                .Select(h => h.Date.Day)
+                .Select(h => h.Date.Date)
                 .ToListAsync();
 
-            // Exclude holidays from working days
-            var workingDays = Enumerable.Range(1, today)
-                .Where(day => !holidays.Contains(day))
-                .ToList();
-
-            int totalWorkingDays = workingDays.Count;
+            int totalWorkingDays = 0;
+            for (var date = monthStart.Date; date <= todayDate; date = date.AddDays(1))
+            {
+                if (!holidayList.Contains(date))
+                {
+                    totalWorkingDays++;
+                }
+            }
 
             var attendanceRate = totalWorkingDays > 0
                 ? Math.Round((decimal)presentDays / totalWorkingDays * 100, 1)

@@ -73,9 +73,24 @@ const AttendanceManagement = () => {
       const clickedDate = new Date(dayData.date);
       if (dayData.status === 'weekend') return;
       if (dayData.status === 'present' || dayData.status === 'late') {
-        // Fetch attendance details for this employee and date
+        // Use cached attendance data if available
+        const cachedAttendances = employeeAttendanceCache[employee.employeeId];
+        if (cachedAttendances) {
+          // Find the record for the clicked date from cache
+          const record = cachedAttendances.find(a => (a.Date || a.date) === dayData.date);
+          if (record) {
+            setSelectedEmployee({
+              ...employee,
+              ...record,
+              date: dayData.date
+            });
+            setDetailsDialog(true);
+            return;
+          }
+        }
+        // Fallback to API call if cache is not available (shouldn't happen normally)
         try {
-          const response = await attendanceService.getEmployeeAttendanceDetails(employee.employeeId, 36);
+          const response = await attendanceService.getEmployeeAttendanceDetails(employee.employeeId, 30);
           if (response.success && response.data && (response.data.Attendances || response.data.attendances)) {
             const attendances = response.data.Attendances || response.data.attendances;
             // Find the record for the clicked date
@@ -122,6 +137,7 @@ const AttendanceManagement = () => {
         setExpandedRow(null); // Close expanded rows
         setPage(0); // Reset pagination to first page
         setEmployeeCalendarData({}); // Clear calendar cache if needed
+        setEmployeeAttendanceCache({}); // Clear attendance cache to refetch fresh data
         await fetchMonthlyAttendance(); // Ensure state is updated before UI renders
       } catch (err) {
         setManualMarkError(err?.response?.data?.message || 'Failed to mark attendance');
@@ -147,6 +163,7 @@ const AttendanceManagement = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [employeeCalendarData, setEmployeeCalendarData] = useState({});
+  const [employeeAttendanceCache, setEmployeeAttendanceCache] = useState({}); // Cache raw attendance data
   const [includeWeekends, setIncludeWeekends] = useState(false);
 
   // Holiday Declaration state
@@ -181,6 +198,7 @@ const AttendanceManagement = () => {
       previousMonthlyBranchRef.current = currentBranch;
       previousMonthRef.current = filterMonth;
       setEmployeeCalendarData({}); // Clear calendar cache when month/branch changes
+      setEmployeeAttendanceCache({}); // Clear attendance cache when month/branch changes
       setExpandedRow(null); // Close expanded rows
       fetchMonthlyAttendance();
     }
@@ -298,15 +316,12 @@ const AttendanceManagement = () => {
       const dayOfWeek = date.getDay();
       const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       
-      // Only mark as weekend if weekends are not included in the configuration
-      const isWeekend = !includeWeekends && (dayOfWeek === 0 || dayOfWeek === 6);
-      
       calendarData.push({
         day,
         date: dateStr,
         dayOfWeek,
         holiday: holidayMap[day] || null,
-        isWeekend
+        isWeekend: false // Always false or remove this property if not used elsewhere
       });
     }
 
@@ -370,13 +385,21 @@ const AttendanceManagement = () => {
       case 'present': return 'success';
       case 'late': return 'warning';
       case 'absent': return 'error';
+      case 'leave': return 'primary';
       default: return 'default';
     }
   };
 
   const getStatusLabel = (status) => {
     if (!status) return 'N/A';
-    return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    switch (status.toLowerCase()) {
+      case 'present': return 'Present';
+      case 'late': return 'Late';
+      case 'absent': return 'Absent';
+      case 'leave': return 'Leave';
+      case 'holiday': return 'Holiday';
+      default: return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    }
   };
 
   const filteredDailyData = dailyAttendanceData.filter(emp => {
@@ -422,76 +445,46 @@ const AttendanceManagement = () => {
 
   // Generate daily attendance data for a specific employee and month
   const generateMonthlyCalendar = async (employeeId) => {
-    // Check if we already have the data cached
     if (employeeCalendarData[employeeId]) {
       return employeeCalendarData[employeeId];
     }
 
     try {
-      // Fetch employee attendance details for the month
       const [year, month] = filterMonth.split('-').map(Number);
       const daysInMonth = new Date(year, month, 0).getDate();
-      
-      // Fetch attendance data from API
-      const response = await attendanceService.getEmployeeAttendanceDetails(employeeId, daysInMonth + 5);
-      
+
+      const response = await attendanceService.getEmployeeAttendanceDetails(employeeId, 30);
+
       if (!response.success) {
         console.error('Failed to fetch employee attendance details');
         return [];
       }
 
-      const attendances = response.data.Attendances || response.data.attendances || [];
+      const attendances = response.data.Attendances || response.data.attendances || response.data.attendance || [];
       
-      // Create a map of dates to attendance records
+      // Cache raw attendance data for this employee
+      setEmployeeAttendanceCache(prev => ({
+        ...prev,
+        [employeeId]: attendances
+      }));
+      
       const attendanceMap = {};
       attendances.forEach(att => {
-        attendanceMap[att.Date || att.date] = att;
+        const dateKey = (att.date || att.Date || '').toLowerCase();
+        attendanceMap[dateKey] = att;
       });
 
       const attendanceData = [];
-      
       for (let day = 1; day <= daysInMonth; day++) {
         const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dateKey = dateStr.toLowerCase();
         const date = new Date(year, month - 1, day);
         const dayOfWeek = date.getDay();
-        
+
         let status = 'absent';
-        
-        // First check if there's actual attendance data for this date
-        const attendance = attendanceMap[dateStr];
-        
-        if (attendance) {
-          // Determine status based on check-in time
-          const checkInTime = attendance.CheckInTime || attendance.checkInTime;
-          if (checkInTime) {
-            // Parse time to determine if late
-            const timeParts = checkInTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
-            if (timeParts) {
-              let hours = parseInt(timeParts[1]);
-              const minutes = parseInt(timeParts[2]);
-              const period = timeParts[3].toUpperCase();
-              
-              if (period === 'PM' && hours !== 12) hours += 12;
-              if (period === 'AM' && hours === 12) hours = 0;
-              
-              const checkInMinutes = hours * 60 + minutes;
-              const standardTime = 9 * 60; // 9:00 AM
-              const lateThreshold = standardTime + 15; // 9:15 AM
-              
-              if (checkInMinutes > lateThreshold) {
-                status = 'late';
-              } else {
-                status = 'present';
-              }
-            } else {
-              status = 'present';
-            }
-          }
-        } else {
-          // Only mark as weekend if there's no attendance data and weekends are not included
-          if (!includeWeekends && (dayOfWeek === 0 || dayOfWeek === 6)) {
-            status = 'weekend';
-          }
+        const attendance = attendanceMap[dateKey];
+        if (attendance && (attendance.status || attendance.Status)) {
+          status = (attendance.status || attendance.Status).toLowerCase();
         }
 
         attendanceData.push({
@@ -502,7 +495,6 @@ const AttendanceManagement = () => {
         });
       }
 
-      // Cache the data
       setEmployeeCalendarData(prev => ({
         ...prev,
         [employeeId]: attendanceData
@@ -528,11 +520,12 @@ const AttendanceManagement = () => {
   };
 
   const getDayColor = (status) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case 'present': return '#4caf50'; // green
       case 'late': return '#ff9800'; // orange
       case 'absent': return '#f44336'; // red
-      case 'weekend': return '#e0e0e0'; // gray
+      case 'leave': return '#64B5F6'; 
+      case 'holiday': return '#e0e0e0'; // purple
       default: return '#fff';
     }
   };
@@ -550,6 +543,7 @@ const AttendanceManagement = () => {
     setPage(0); // Reset pagination
     setExpandedRow(null); // Close any expanded rows
     setEmployeeCalendarData({}); // Clear calendar cache when switching tabs
+    setEmployeeAttendanceCache({}); // Clear attendance cache when switching tabs
     setHolidayCalendarData([]); // Clear holiday calendar cache when switching tabs
     // useEffect will handle fetching when tab changes
   };
@@ -795,9 +789,9 @@ const AttendanceManagement = () => {
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>
-          {/* Monthly Statistics Cards */}
+          {/* Monthly Statistics Cards (removed Total Absent Days) */}
           <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={4}>
               <Card>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -814,8 +808,7 @@ const AttendanceManagement = () => {
                 </CardContent>
               </Card>
             </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={4}>
               <Card>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -832,8 +825,7 @@ const AttendanceManagement = () => {
                 </CardContent>
               </Card>
             </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={4}>
               <Card>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -850,52 +842,31 @@ const AttendanceManagement = () => {
                 </CardContent>
               </Card>
             </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Avatar sx={{ backgroundColor: 'warning.main', mr: 2 }}>
-                      <CalendarMonth />
-                    </Avatar>
-                    <Box>
-                      <Typography variant="h6">{monthlyStats.totalAbsent}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Total Absent Days
-                      </Typography>
-                    </Box>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
           </Grid>
 
           {/* Monthly Filters */}
           <Card sx={{ mb: 3 }}>
             <CardContent>
-              <Grid container spacing={3} alignItems="center">
-                <Grid item xs={12} md={3}>
-                  <TextField
-                    fullWidth
-                    label="Month"
-                    type="month"
-                    value={filterMonth}
-                    onChange={(e) => setFilterMonth(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Grid>
-                <Grid item xs={12} md={3}>
-                  <TextField
-                    fullWidth
-                    label="Employee Name/ID"
-                    value={filterEmployee}
-                    onChange={(e) => setFilterEmployee(e.target.value)}
-                    placeholder="Search employee..."
-                    size="small"
-                  />
-                </Grid>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                <FilterList />
+                <TextField
+                  label="Month"
+                  type="month"
+                  value={filterMonth}
+                  onChange={(e) => setFilterMonth(e.target.value)}
+                  size="small"
+                  InputLabelProps={{ shrink: true }}
+                />
+                <TextField
+                  label="Employee Name/ID"
+                  value={filterEmployee}
+                  onChange={(e) => setFilterEmployee(e.target.value)}
+                  size="small"
+                  sx={{ minWidth: 200 }}
+                  placeholder="Search employee..."
+                />
                 {/* Department dropdown removed as requested */}
-              </Grid>
+              </Box>
             </CardContent>
           </Card>
 
@@ -908,7 +879,8 @@ const AttendanceManagement = () => {
                     <TableRow>
                       <TableCell>Employee ID</TableCell>
                       <TableCell>Employee Name</TableCell>
-                      <TableCell>Department</TableCell>
+                      <TableCell>Total Days</TableCell>
+                      <TableCell>Leave Taken</TableCell>
                       <TableCell>Present Days</TableCell>
                       <TableCell>Absent Days</TableCell>
                       <TableCell>Late Days</TableCell>
@@ -924,13 +896,25 @@ const AttendanceManagement = () => {
                       .map((employee) => {
                         const isExpanded = expandedRow === employee.employeeId;
                         const monthlyCalendar = employeeCalendarData[employee.employeeId] || [];
-                        
                         return (
                           <React.Fragment key={employee.employeeId}>
                             <TableRow>
                               <TableCell>{employee.employeeId}</TableCell>
                               <TableCell>{employee.employeeName}</TableCell>
-                              <TableCell>{employee.department}</TableCell>
+                              <TableCell>
+                                <Chip
+                                  label={employee.totalDays}
+                                  color="default"
+                                  size="small"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Chip
+                                  label={employee.leaveTaken ?? 0}
+                                  color="primary"
+                                  size="small"
+                                />
+                              </TableCell>
                               <TableCell>
                                 <Chip
                                   label={employee.presentDays}
@@ -948,7 +932,7 @@ const AttendanceManagement = () => {
                               <TableCell>
                                 <Chip
                                   label={employee.lateDays}
-                                  color={employee.lateDays > 3 ? "warning" : "default"}
+                                  color="warning"
                                   size="small"
                                 />
                               </TableCell>
@@ -1060,7 +1044,7 @@ const AttendanceManagement = () => {
                                                       <DialogTitle>Manually Mark Attendance</DialogTitle>
                                                       <DialogContent>
                                                         <Typography>
-                                                          Mark <b>{manualMarkInfo.employee?.employeeName}</b> as <b>Present</b> for <b>{manualMarkInfo.date}</b> with 8 hours?
+                                                          Mark <b>{manualMarkInfo.employee?.employeeName}</b> as <b>Present</b> for <b>{manualMarkInfo.date}</b>?
                                                         </Typography>
                                                         {manualMarkError && <Alert severity="error" sx={{ mt: 2 }}>{manualMarkError}</Alert>}
                                                       </DialogContent>
@@ -1072,7 +1056,7 @@ const AttendanceManagement = () => {
                                                       </DialogActions>
                                                     </Dialog>
                                     </Box>
-                                    
+                                   
                                     {/* Legend */}
                                     <Box sx={{ display: 'flex', gap: 2, mt: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
                                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -1088,8 +1072,12 @@ const AttendanceManagement = () => {
                                         <Typography variant="caption">Absent</Typography>
                                       </Box>
                                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                        <Box sx={{ width: 16, height: 16, backgroundColor: getDayColor('weekend'), borderRadius: 0.5 }} />
-                                        <Typography variant="caption">Weekend</Typography>
+                                        <Box sx={{ width: 16, height: 16, backgroundColor: getDayColor('leave'), borderRadius: 0.5 }} />
+                                        <Typography variant="caption">Leave</Typography>
+                                      </Box>
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                        <Box sx={{ width: 16, height: 16, backgroundColor: getDayColor('holiday'), borderRadius: 0.5 }} />
+                                        <Typography variant="caption">Holiday</Typography>
                                       </Box>
                                     </Box>
                                   </Box>
@@ -1122,57 +1110,39 @@ const AttendanceManagement = () => {
 
         <TabPanel value={tabValue} index={2}>
           {/* Holiday Declaration Tab */}
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Avatar sx={{ backgroundColor: 'info.main', mr: 2 }}>
-                      <CalendarMonth />
-                    </Avatar>
-                    <Box>
-                      <Typography variant="h6">{holidayData.length}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Holidays This Month
-                      </Typography>
-                    </Box>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Avatar sx={{ backgroundColor: 'warning.main', mr: 2 }}>
-                      <Business />
-                    </Avatar>
-                    <Box>
-                      <Typography variant="h6">{currentBranch}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Current Branch
-                      </Typography>
-                    </Box>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
+          {/* Removed Current Branch card. Move Holidays This Month card into filter section below. */}
 
           {/* Holiday Filters */}
           <Card sx={{ mb: 3 }}>
             <CardContent>
               <Grid container spacing={3} alignItems="center">
-                <Grid item xs={12} md={4}>
-                  <TextField
-                    fullWidth
-                    label="Month"
-                    type="month"
-                    value={filterMonth}
-                    onChange={(e) => setFilterMonth(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                  />
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ height: '100%' }}>
+                    <TextField
+                      fullWidth
+                      label="Month"
+                      type="month"
+                      value={filterMonth}
+                      onChange={(e) => setFilterMonth(e.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                      sx={{ height: '100%', '& .MuiInputBase-root': { height: '100%' } }}
+                    />
+                  </Box>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Card variant="outlined" sx={{ boxShadow: 0, borderRadius: 1, height: '100%' }}>
+                    <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2, height: '56px' }}>
+                      <Avatar sx={{ backgroundColor: 'info.main', mr: 2 }}>
+                        <CalendarMonth />
+                      </Avatar>
+                      <Box>
+                        <Typography variant="h6">{holidayData.length}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Holidays This Month
+                        </Typography>
+                      </Box>
+                    </CardContent>
+                  </Card>
                 </Grid>
               </Grid>
             </CardContent>
@@ -1214,6 +1184,7 @@ const AttendanceManagement = () => {
                           alignItems: 'center',
                           justifyContent: 'center'
                         }}
+                        onClick={() => handleHolidayDayClick(dayData)}
                       >
                         {day}
                       </Box>
@@ -1246,7 +1217,7 @@ const AttendanceManagement = () => {
                             alignItems: 'center',
                             justifyContent: 'center',
                             backgroundColor: dayData.holiday 
-                              ? '#f44336' 
+                              ? '#e0e0e0' 
                               : dayData.isWeekend 
                                 ? '#e0e0e0' 
                                 : '#fff',
@@ -1284,13 +1255,13 @@ const AttendanceManagement = () => {
                       <Typography variant="body2">Working Day</Typography>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <Box sx={{ width: 20, height: 20, backgroundColor: '#f44336', borderRadius: 0.5 }} />
+                      <Box sx={{ width: 20, height: 20, backgroundColor: '#e0e0e0', borderRadius: 0.5 }} />
                       <Typography variant="body2">Holiday</Typography>
                     </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    {/* <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       <Box sx={{ width: 20, height: 20, backgroundColor: '#e0e0e0', borderRadius: 0.5 }} />
                       <Typography variant="body2">Weekend</Typography>
-                    </Box>
+                    </Box> */}
                   </Box>
 
                   {/* Holiday List */}
@@ -1325,6 +1296,16 @@ const AttendanceManagement = () => {
                                     />
                                   )}
                                 </Box>
+                                <IconButton size="small">
+                                  {holiday.branchName && (
+                                    <Chip 
+                                      label={holiday.branchName} 
+                                      size="small" 
+                                      variant="outlined" 
+                                      sx={{ mt: 0.5 }} 
+                                    />
+                                  )}
+                                </IconButton>
                                 <IconButton
                                   size="small"
                                   color="error"

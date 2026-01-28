@@ -32,6 +32,7 @@ public class MonthlyAttendanceDto
     public int PresentDays { get; set; }
     public int LateDays { get; set; }
     public int AbsentDays { get; set; }
+    public int LeaveTaken { get; set; }
     public decimal AvgHours { get; set; }
     public decimal AttendancePercentage { get; set; }
     public double? ProductivityRating { get; set; }
