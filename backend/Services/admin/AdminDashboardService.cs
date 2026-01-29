@@ -58,7 +58,7 @@ namespace BankAPI.Services.Admin
                            a.Date == today)
                 .ToListAsync();
 
-            var presentToday = todayAttendance.Count(a => a.Status == "Present");
+            var presentToday = todayAttendance.Count(a => a.Status == "Present" || a.Status == "Late");
             var absentToday = todayAttendance.Count(a => a.Status == "Absent");
 
             // Calculate attendance rate for the month
@@ -70,7 +70,7 @@ namespace BankAPI.Services.Admin
                 .ToListAsync();
 
             var attendanceRate = monthAttendance.Count > 0
-                ? Math.Round((decimal)monthAttendance.Count(a => a.Status == "Present") / monthAttendance.Count * 100, 1)
+                ? Math.Round((decimal)monthAttendance.Count(a => a.Status == "Present" || a.Status == "Late") / monthAttendance.Count * 100, 1)
                 : 0;
 
             // Get open complaints (only "Open" status, not "In Progress")
