@@ -233,7 +233,7 @@ namespace BankAPI.Services
         public async Task<List<AttendanceDto>> GetAttendanceHistory(long employeeId, int days = 5)
         {
             var startDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-(days)));
-            var endDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1));
+            var endDate = DateOnly.FromDateTime(DateTime.UtcNow);
 
             // Get employee and tenantId
             var employee = await _context.Employees.FindAsync(employeeId);
