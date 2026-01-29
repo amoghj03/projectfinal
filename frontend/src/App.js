@@ -4,6 +4,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import theme from './theme';
 import { BranchProvider } from './contexts/BranchContext';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Import pages
 import Login from './pages/Login';
@@ -94,11 +95,12 @@ const AdminProtectedRoute = ({ children, requiredPermission }) => {
   );
 };
 
-function  App() {
+function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Router>
+      <ErrorBoundary>
+        <Router>
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Login />} />
@@ -307,6 +309,7 @@ function  App() {
           />
         </Routes>
       </Router>
+      </ErrorBoundary>
     </ThemeProvider>
   );
 }

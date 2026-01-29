@@ -28,6 +28,17 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Handle 500 errors gracefully
+    if (error.response?.status === 500) {
+      console.error('Server error (500):', error.response?.data || 'Internal Server Error');
+      return {
+        data: {
+          success: false,
+          message: 'Server error. Please try again later.',
+          isServerError: true
+        }
+      };
+    }
     if (error.response?.status === 401) {
       // Handle unauthorized - clear storage and redirect to login
       localStorage.clear();
