@@ -63,6 +63,15 @@ public class MonthlyAttendanceRequest
 }
 
 /// <summary>
+/// Request DTO for fetching employee attendance details
+/// </summary>
+public class EmployeeAttendanceRequest
+{
+    public string Month { get; set; } = string.Empty; // Format: YYYY-MM
+    public long TenantId { get; set; }
+}
+
+/// <summary>
 /// Response wrapper for monthly attendance data that includes settings
 /// </summary>
 public class MonthlyAttendanceResponse

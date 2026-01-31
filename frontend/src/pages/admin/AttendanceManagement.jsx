@@ -173,6 +173,8 @@ const AttendanceManagement = () => {
   const [holidayMarkInfo, setHolidayMarkInfo] = useState({ date: null, name: '', description: '' });
   const [holidayMarkLoading, setHolidayMarkLoading] = useState(false);
   const [holidayMarkError, setHolidayMarkError] = useState(null);
+  const [holidayDeleteDialog, setHolidayDeleteDialog] = useState(false);
+  const [holidayToDelete, setHolidayToDelete] = useState(null);
 
   const hasFetchedRef = useRef(false);
   const previousDailyBranchRef = useRef(null);
@@ -352,7 +354,7 @@ const AttendanceManagement = () => {
 
     setHolidayMarkLoading(true);
     setHolidayMarkError(null);
-    
+
     try {
       let branchId = null;
        if (currentBranch && currentBranch !== 'All Branches') {
@@ -367,13 +369,31 @@ const AttendanceManagement = () => {
         description: holidayMarkInfo.description.trim() || null,
         branchId
       });
-      
+
       setHolidayMarkDialog(false);
       await fetchHolidays(); // Refresh holiday data
     } catch (err) {
       setHolidayMarkError(err?.response?.data?.message || 'Failed to create holiday');
     } finally {
       setHolidayMarkLoading(false);
+    }
+  };
+
+  const handleHolidayDeleteClick = (holiday) => {
+    setHolidayToDelete(holiday);
+    setHolidayDeleteDialog(true);
+  };
+
+  const handleHolidayDeleteConfirm = async () => {
+    if (!holidayToDelete) return;
+
+    try {
+      await adminAttendanceService.deleteHoliday(holidayToDelete.holidayId);
+      setHolidayDeleteDialog(false);
+      setHolidayToDelete(null);
+      await fetchHolidays(); // Refresh holiday data
+    } catch (err) {
+      setError('Failed to delete holiday');
     }
   };
 
@@ -453,7 +473,8 @@ const AttendanceManagement = () => {
       const [year, month] = filterMonth.split('-').map(Number);
       const daysInMonth = new Date(year, month, 0).getDate();
 
-      const response = await attendanceService.getEmployeeAttendanceDetails(employeeId, 30);
+      // Pass filterMonth to get attendance for the selected month
+      const response = await attendanceService.getEmployeeAttendanceDetails(employeeId, filterMonth);
 
       if (!response.success) {
         console.error('Failed to fetch employee attendance details');
@@ -1049,10 +1070,14 @@ const AttendanceManagement = () => {
                                                         {manualMarkError && <Alert severity="error" sx={{ mt: 2 }}>{manualMarkError}</Alert>}
                                                       </DialogContent>
                                                       <DialogActions>
-                                                        <Button onClick={() => setManualMarkDialog(false)} disabled={manualMarkLoading}>Cancel</Button>
-                                                        <Button onClick={handleManualMarkConfirm} variant="contained" disabled={manualMarkLoading}>
-                                                          {manualMarkLoading ? <CircularProgress size={20} /> : 'Mark Present'}
+                                                        <Button onClick={() => setManualMarkDialog(false)} disabled={manualMarkLoading}>
+                                                          {manualMarkError ? 'Close' : 'Cancel'}
                                                         </Button>
+                                                        {!manualMarkError && (
+                                                          <Button onClick={handleManualMarkConfirm} variant="contained" disabled={manualMarkLoading}>
+                                                            {manualMarkLoading ? <CircularProgress size={20} /> : 'Mark Present'}
+                                                          </Button>
+                                                        )}
                                                       </DialogActions>
                                                     </Dialog>
                                     </Box>
@@ -1309,14 +1334,7 @@ const AttendanceManagement = () => {
                                 <IconButton
                                   size="small"
                                   color="error"
-                                  onClick={async () => {
-                                    try {
-                                      await adminAttendanceService.deleteHoliday(holiday.holidayId);
-                                      await fetchHolidays();
-                                    } catch (err) {
-                                      setError('Failed to delete holiday');
-                                    }
-                                  }}
+                                  onClick={() => handleHolidayDeleteClick(holiday)}
                                 >
                                   <Tooltip title="Delete Holiday">
                                     <span>×</span>
@@ -1375,6 +1393,28 @@ const AttendanceManagement = () => {
               sx={{ background: 'linear-gradient(135deg, #f44336, #d32f2f)' }}
             >
               {holidayMarkLoading ? <CircularProgress size={20} /> : 'Mark Holiday'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Holiday Delete Confirmation Dialog */}
+        <Dialog open={holidayDeleteDialog} onClose={() => setHolidayDeleteDialog(false)}>
+          <DialogTitle>Confirm Delete Holiday</DialogTitle>
+          <DialogContent>
+            <Typography>
+              Are you sure you want to delete the holiday <b>{holidayToDelete?.name}</b> on <b>{holidayToDelete ? new Date(holidayToDelete.date).toLocaleDateString() : ''}</b>?
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setHolidayDeleteDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleHolidayDeleteConfirm} 
+              color="error" 
+              variant="contained"
+            >
+              Delete
             </Button>
           </DialogActions>
         </Dialog>

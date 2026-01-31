@@ -300,9 +300,9 @@ namespace BankAPI.Services.Admin
         }
 
         /// <summary>
-        /// Get attendance details for a specific employee
+        /// Get attendance details for a specific employee for a specific month
         /// </summary>
-        public async Task<object> GetEmployeeAttendanceDetails(string employeeId, int days = 30)
+        public async Task<object> GetEmployeeAttendanceDetails(string employeeId, EmployeeAttendanceRequest request)
         {
             var employee = await _context.Employees
                 .Include(e => e.Branch)
@@ -313,30 +313,37 @@ namespace BankAPI.Services.Admin
                 throw new Exception("Employee not found");
             }
 
-            var startDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-days));
+            // Parse month from YYYY-MM format
+            var parts = request.Month.Split('-');
+            if (parts.Length != 2 || !int.TryParse(parts[0], out int year) || !int.TryParse(parts[1], out int month))
+            {
+                throw new Exception("Invalid month format. Expected YYYY-MM");
+            }
 
-            // Fetch all attendances for the employee in the date range
+            var startDate = new DateOnly(year, month, 1);
+            var endDate = startDate.AddMonths(1).AddDays(-1);
+
+            // Fetch all attendances for the employee in the month
             var attendancesRaw = await _context.Attendances
-                .Where(a => a.EmployeeId == employee.Id && a.Date >= startDate)
+                .Where(a => a.EmployeeId == employee.Id && a.Date >= startDate && a.Date <= endDate)
                 .ToListAsync();
 
-            // Get all holidays for the employee's tenant and branch in the date range
+            // Get all holidays for the employee's tenant and branch in the month
             var branchId = employee.BranchId;
             var startDateTime = DateTime.SpecifyKind(startDate.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
-            var endDateTime = DateTime.SpecifyKind(today.ToDateTime(TimeOnly.MaxValue), DateTimeKind.Utc);
+            var endDateTime = DateTime.SpecifyKind(endDate.ToDateTime(TimeOnly.MaxValue), DateTimeKind.Utc);
             var holidays = await _context.Holidays
                 .Where(h => h.TenantId == employee.TenantId && h.Date >= startDateTime && h.Date <= endDateTime && (h.BranchId == null || (branchId != null && h.BranchId == branchId)))
                 .ToListAsync();
 
-            // Get all approved leave requests for the employee in the date range
+            // Get all approved leave requests for the employee in the month
             var leaveRequests = await _context.LeaveRequests
-                .Where(lr => lr.EmployeeId == employee.Id && lr.Status == "Approved" && lr.EndDate >= startDate)
+                .Where(lr => lr.EmployeeId == employee.Id && lr.Status == "Approved" && lr.StartDate <= endDate && lr.EndDate >= startDate)
                 .ToListAsync();
 
-            // Build attendance list for each day in the range (most recent first)
+            // Build attendance list for each day in the month (chronological order)
             var attendances = new List<object>();
-            for (var d = today; d >= startDate; d = d.AddDays(-1))
+            for (var d = startDate; d <= endDate; d = d.AddDays(1))
             {
                 var attendance = attendancesRaw.FirstOrDefault(a => a.Date == d);
                 var holiday = holidays.FirstOrDefault(h => h.Date.Date == DateTime.SpecifyKind(d.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc).Date && (h.BranchId == null || (branchId != null && h.BranchId == branchId)));
@@ -384,6 +391,9 @@ namespace BankAPI.Services.Admin
                     employee.Email,
                     employee.Phone
                 },
+                Month = request.Month,
+                StartDate = startDate.ToString("yyyy-MM-dd"),
+                EndDate = endDate.ToString("yyyy-MM-dd"),
                 Attendances = attendances
             };
         }

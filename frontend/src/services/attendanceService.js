@@ -165,14 +165,14 @@ const attendanceService = {
   },
 
   /**
-   * Get detailed attendance history for a specific employee
+   * Get detailed attendance history for a specific employee for a specific month
    * @param {string} employeeId - Employee ID
-   * @param {number} days - Number of days to fetch (default 30)
+   * @param {string} month - Month in YYYY-MM format (required)
    */
-  getEmployeeAttendanceDetails: async (employeeId, days = 30) => {
+  getEmployeeAttendanceDetails: async (employeeId, month) => {
     try {
       const response = await attendanceApi.get(`/admin/AdminAttendance/employee/${employeeId}`, {
-        params: { days }
+        params: { month }
       });
       return response.data;
     } catch (error) {

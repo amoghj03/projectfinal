@@ -133,16 +133,34 @@ public class AdminAttendanceController : BaseApiController
     }
 
     /// <summary>
-    /// Get detailed attendance history for a specific employee
+    /// Get detailed attendance history for a specific employee for a specific month
     /// </summary>
     /// <param name="employeeId">Employee ID</param>
-    /// <param name="days">Number of days to fetch (default 30)</param>
+    /// <param name="month">Month in YYYY-MM format (required)</param>
     [HttpGet("employee/{employeeId}")]
-    public async Task<IActionResult> GetEmployeeAttendanceDetails(string employeeId, [FromQuery] int days = 30)
+    public async Task<IActionResult> GetEmployeeAttendanceDetails(string employeeId, [FromQuery] string month)
     {
         try
         {
-            var data = await _adminAttendanceService.GetEmployeeAttendanceDetails(employeeId, days);
+            var employeeIdFromAuth = GetEmployeeIdFromAuth();
+            if (employeeIdFromAuth == 0)
+            {
+                return Unauthorized(new { message = "Invalid authentication token" });
+            }
+
+            var employee = await _context.Employees.FindAsync(employeeIdFromAuth);
+            if (employee == null)
+            {
+                return Unauthorized(new { message = "Employee not found" });
+            }
+
+            var request = new EmployeeAttendanceRequest
+            {
+                Month = month,
+                TenantId = employee.TenantId
+            };
+
+            var data = await _adminAttendanceService.GetEmployeeAttendanceDetails(employeeId, request);
 
             return Ok(new
             {
